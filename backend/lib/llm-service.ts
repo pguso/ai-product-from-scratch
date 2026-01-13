@@ -35,6 +35,47 @@ import type { LLMServiceConfig, GenerationOptions } from './types.js';
 import type { LLMLogger } from './llm-logger.js';
 
 /**
+ * Filter out broken alternatives that fail validation
+ * 
+ * Removes alternatives with:
+ * - Empty or whitespace-only text
+ * - Empty or whitespace-only reason
+ * - Invalid tag arrays
+ * 
+ * Rule: Fewer options > broken options
+ */
+function filterValidAlternatives(alternatives: Alternative[]): Alternative[] {
+  return alternatives.filter((alt) => {
+    // Check text is non-empty and not just whitespace
+    if (!alt.text || alt.text.trim().length === 0) {
+      console.warn(`[Alternatives] Dropping option ${alt.badge}: empty text`);
+      return false;
+    }
+    
+    // Check reason is non-empty and not just whitespace
+    if (!alt.reason || alt.reason.trim().length === 0) {
+      console.warn(`[Alternatives] Dropping option ${alt.badge}: empty reason`);
+      return false;
+    }
+    
+    // Check tags array is valid
+    if (!alt.tags || alt.tags.length === 0) {
+      console.warn(`[Alternatives] Dropping option ${alt.badge}: empty tags`);
+      return false;
+    }
+    
+    // Check all tags are valid
+    const hasInvalidTag = alt.tags.some(tag => !tag.text || tag.text.trim().length === 0);
+    if (hasInvalidTag) {
+      console.warn(`[Alternatives] Dropping option ${alt.badge}: invalid tags`);
+      return false;
+    }
+    
+    return true;
+  });
+}
+
+/**
  * LLM Service
  * 
  * Manages the local LLM model and provides methods for analyzing communication.
@@ -231,7 +272,7 @@ export class LLMService {
    */
   async generateAlternatives(message: string, context?: string, sessionId?: string): Promise<Alternative[]> {
     this.ensureInitialized('alternatives');
-    return this.generateAnalysis(
+    const alternatives = await this.generateAnalysis(
       buildAlternativesPrompt,
       this.grammars.alternatives!,
       this.validators.alternatives,
@@ -241,6 +282,9 @@ export class LLMService {
       'alternatives',
       sessionId
     );
+    
+    // Filter out broken alternatives (fewer options > broken options)
+    return filterValidAlternatives(alternatives);
   }
 
   /**
@@ -349,11 +393,14 @@ export class LLMService {
         ),
       ]);
 
+      // Filter out broken alternatives (fewer options > broken options)
+      const validAlternatives = filterValidAlternatives(alternatives);
+
       return {
         intent,
         tone,
         impact,
-        alternatives,
+        alternatives: validAlternatives,
       };
     } finally {
       // Clean up the temporary context

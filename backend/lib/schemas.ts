@@ -64,7 +64,16 @@ export const impactSchema: JSONSchemaType<ImpactAnalysis> = {
       items: {
         type: 'object',
         properties: {
-          name: { type: 'string', minLength: 1 },
+          name: { 
+            type: 'string', 
+            minLength: 1,
+            enum: [
+              'Emotional Friction',
+              'Defensive Response Likelihood',
+              'Relationship Strain',
+              'Cooperation Likelihood'
+            ]
+          },
           value: { type: 'integer', minimum: 0, maximum: 100 },
           category: { type: 'string', enum: ['low', 'medium', 'high'] },
         },
@@ -163,7 +172,15 @@ export const llamaImpactSchema = {
       items: {
         type: 'object',
         properties: {
-          name: { type: 'string' },
+          name: { 
+            type: 'string',
+            enum: [
+              'Emotional Friction',
+              'Defensive Response Likelihood',
+              'Relationship Strain',
+              'Cooperation Likelihood'
+            ]
+          },
           value: { type: 'integer' },
           category: { type: 'string', enum: ['low', 'medium', 'high'] },
         },

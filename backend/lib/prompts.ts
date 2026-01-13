@@ -38,6 +38,11 @@ CRITICAL RULES FOR INTENT FIELDS:
 2. DO NOT return empty strings "" for any field
 3. If the message is simple, still provide meaningful descriptions for each level
 4. Each field must contain actual analysis, not placeholder text
+5. Each field MUST be a complete, grammatically correct sentence - DO NOT cut off mid-sentence
+6. Primary intent MUST be a complete sentence describing what they explicitly want (e.g., "The person is expressing concern about feeling dismissed and seeking validation for their experience")
+7. Secondary intent MUST be a complete sentence describing supporting goals (e.g., "They are also exploring whether the dismissal was unintentional, indicating a desire to validate their experience without escalating conflict")
+8. Implicit intent MUST be a complete sentence describing unstated goals (e.g., "They may be seeking reassurance that their feelings are valid and that the relationship is still safe")
+9. DO NOT return incomplete sentences that end mid-thought - every field must be a complete, coherent description
 
 Respond with this exact JSON structure:
 {
@@ -68,7 +73,7 @@ Provide:
 - emotions: Array of detected emotional signals (REQUIRED: must have at least 1 item, NEVER empty), each with:
   - text: The emotion label (e.g., "Frustrated", "Appreciative", "Anxious", "Hurt (mild)", "Disappointment (low intensity)", "Emotional discomfort", "Neutral") - must be non-empty
   - sentiment: One of "positive", "neutral", or "negative" (required)
-- details: Specific observations about word choice, phrasing, or patterns that reveal tone. Reference specific words or phrases from the message (required, non-empty)
+- details: Specific observations about word choice, phrasing, or patterns that reveal tone. MUST be a complete, coherent explanation (required, non-empty, MUST NOT be cut off mid-sentence). CRITICAL: You MUST quote and reference specific words or phrases from the message (e.g., "The phrase 'maybe it's nothing' softens the assertion", "The use of 'a little' indicates mild intensity"). Explain HOW the specific wording produces the detected emotions. DO NOT return incomplete sentences like "The phrases 'felt " - complete your analysis fully.
 
 CRITICAL RULES FOR EMOTIONS ARRAY:
 1. The emotions array MUST contain at least 1 emotion object - NEVER return an empty array []
@@ -92,8 +97,14 @@ Respond with this exact JSON structure:
     { "text": "Emotion1", "sentiment": "negative" },
     { "text": "Emotion2", "sentiment": "neutral" }
   ],
-  "details": "detailed analysis with specific examples from the message"
-}`;
+  "details": "detailed analysis with specific examples from the message - MUST quote specific phrases like 'maybe it's nothing' or 'a little' and explain how they produce the detected emotions. MUST be complete, not cut off."
+}
+
+CRITICAL: The details field MUST:
+1. Be a complete, coherent explanation - DO NOT cut off mid-sentence
+2. Quote specific words or phrases from the message using single quotes (e.g., 'maybe it's nothing', 'a little', 'felt dismissed')
+3. Explain HOW the specific wording produces the detected emotions
+4. If you cannot complete the details field fully, provide a shorter but complete analysis rather than an incomplete one`;
 }
 
 // -----------------------------------------------------------------------------
@@ -146,9 +157,14 @@ CRITICAL RULES FOR METRICS ARRAY:
 1. The metrics array MUST contain exactly 4 metric objects - NEVER return an empty array []
 2. You MUST provide all 4 metrics listed above - no exceptions
 3. Each metric must have:
-   - name: The exact metric name as listed above (required, non-empty, must match exactly)
+   - name: The EXACT metric name from this list (required, non-empty, must match EXACTLY - no variations, no additions):
+     * "Emotional Friction" (NOT "Emotional Friction validation" or any other variation)
+     * "Defensive Response Likelihood" (NOT "Defensive Response" or any other variation)
+     * "Relationship Strain" (NOT "Relationship" or any other variation)
+     * "Cooperation Likelihood" (NOT "Cooperation" or any other variation)
    - value: Integer between 0 and 100 inclusive (required, must be 0-100)
    - category: "low" (0-33), "medium" (34-66), or "high" (67-100) (required, must match the value range)
+4. DO NOT combine metric names or add words to them - use the exact names listed above
 
 Also provide recipientResponse: A realistic prediction of how the recipient might think or feel upon reading THIS specific message (required, non-empty string). 
 - For SELF-EXPRESSIVE messages: Focus on concern, empathy, desire to help/support
@@ -191,11 +207,34 @@ CRITICAL REQUIREMENTS:
 
 For each of the 3 alternatives, provide:
 - badge: Label like "Option A", "Option B", "Option C" (required, non-empty string)
-- text: The complete reworded message based on the original message above (required, non-empty string)
-- reason: Explanation of why this version improves on the original message (required, at least 1 character, non-empty string)
+- text: The complete reworded message based on the original message above (required, non-empty string, MUST NOT be empty or just whitespace)
+- reason: Complete explanation of why this version improves on the original message (required, MUST be a complete sentence or sentences, NOT cut off mid-thought, MUST NOT be empty or just whitespace, MUST explain the improvement fully)
 - tags: Array with at least 1 tag (required, minimum 1 item), each tag has:
-  - text: Tag label like "Collaborative", "Direct", "Empathetic" (required, non-empty string)
+  - text: Tag label with clear axis definition (required, non-empty string)
   - isPositive: true or false (required boolean)
+
+TAG DEFINITIONS - CRITICAL:
+Tags must specify WHAT dimension they represent and FOR WHOM. Use clear axis definitions:
+
+✅ GOOD TAG EXAMPLES:
+- "Emotionally Safe (for recipient)" - clarifies it's about recipient's emotional safety
+- "Collaborative (approach)" - clarifies it's about the communication approach
+- "Direct (tone)" - clarifies it's about tone
+- "Empathetic (toward recipient)" - clarifies who the empathy is directed toward
+- "Softened (intensity)" - clarifies it's about emotional intensity reduction
+- "Vulnerable (speaker risk)" - clarifies it's about speaker taking emotional risk
+
+❌ BAD TAG EXAMPLES (too vague):
+- "Emotionally Safe" - safe for whom? in what context?
+- "Gentle" - gentle in what way? toward whom?
+- "Softened" - what was softened? how?
+
+Each tag must answer: What dimension? For whom? In what context?
+
+VALIDATION RULES:
+1. If any alternative fails validation (empty text, empty/incomplete reason, invalid tags), DO NOT include it in your response. Return fewer valid alternatives rather than broken ones. Fewer options > broken options.
+2. The reason field MUST be a complete explanation - DO NOT return incomplete sentences like "This version softens " or "This rephrasing strengthens" without completing the thought. Every reason must be a full, coherent explanation.
+3. If you cannot provide a complete reason for an alternative, do not include that alternative.
 
 CRITICAL RULES FOR EQUIVALENT REWRITES:
 Alternatives must be EQUIVALENT REWRITES that preserve the original message's core meaning, not interpretations or responses.
@@ -204,14 +243,16 @@ Alternatives must be EQUIVALENT REWRITES that preserve the original message's co
    - If original uses "I", alternatives MUST use "I" (not "you" or "they")
    - If original uses "you", alternatives MUST use "you" (not "I" or "they")
    - DO NOT switch from first-person to second-person or vice versa
-   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" or "I felt a bit ignored"
+   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" or "I felt a bit overlooked"
    - ❌ WRONG: "I felt dismissed" → "I can see you felt overlooked" (switches to second-person)
+   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - only use if acknowledging increased risk
 
 2. PRESERVE EMOTIONAL OWNERSHIP:
    - If speaker expresses their own feelings, alternatives MUST express the speaker's feelings
    - DO NOT change from self-expression to observation or interpretation
    - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" (speaker still expressing their own feeling)
    - ❌ WRONG: "I felt dismissed" → "It seems you felt dismissed" (changes to observation about others)
+   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - if used, reason must acknowledge increased risk
 
 3. PRESERVE COMMUNICATIVE INTENT:
    - If original is a statement, alternatives MUST be statements (not questions or responses)
@@ -220,11 +261,35 @@ Alternatives must be EQUIVALENT REWRITES that preserve the original message's co
    - Alternatives are REWRITES of the same message, not responses to it
    - ✅ CORRECT: "I felt dismissed" → "I felt a bit overlooked" (still a statement expressing the same feeling)
    - ❌ WRONG: "I felt dismissed" → "Did you feel dismissed?" (changes statement to question)
+   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - if used, reason must acknowledge increased risk
 
 4. IMPROVE EMOTIONAL IMPACT:
    - Reduce potential for negative emotional response
    - Use softer language while maintaining the same meaning
    - Vary in approach (e.g., one more direct, one more empathetic, one more collaborative)
+
+CRITICAL SEMANTIC UNDERSTANDING:
+When choosing alternative words, understand their relative strength AND meaning shifts:
+- "dismissed" is MODERATE - suggests being overlooked or not taken seriously (focus: attention/acknowledgment)
+- "ignored" is STRONGER than "dismissed" - suggests being completely overlooked or intentionally disregarded
+- "overlooked" is SOFTER than "dismissed" - more neutral, less judgmental (similar meaning frame)
+- "taken for granted" is STRONGER and DIFFERENT - implies longer-term pattern, shifts from attention → value/worth
+- "undervalued" is DIFFERENT - shifts from attention/acknowledgment → worth/value assessment
+- "slightly overlooked" or "a bit overlooked" is SOFTER than "overlooked"
+
+SEMANTIC SHIFT REQUIREMENTS:
+If you use a word that changes the meaning frame (e.g., "taken for granted" or "undervalued" instead of "dismissed"), you MUST explicitly acknowledge the shift in your reason:
+- ✅ CORRECT: "This shifts the emotional frame from attention to value, which may feel more personal but also more specific."
+- ✅ CORRECT: "This version uses 'taken for granted' which implies a longer-term pattern rather than a single incident, shifting from momentary attention to ongoing value assessment."
+- ❌ WRONG: "This version is softer" (when it actually shifts meaning)
+- ❌ WRONG: "This improves clarity" (without acknowledging the semantic shift)
+
+If you use a STRONGER word (like "ignored" instead of "dismissed"), you MUST acknowledge this in your reason:
+- ✅ CORRECT: "This version increases emotional clarity but slightly raises the risk of defensiveness."
+- ❌ WRONG: "This version is softer" (when it's actually stronger)
+
+TRANSPARENCY REQUIREMENT:
+Be explicit about semantic shifts. If word substitutions change meaning (attention → value, single incident → pattern, etc.), state it clearly. This transparency builds user trust.
 
 Create 3 alternatives that:
 1. Preserve the original intent of the message above
@@ -283,22 +348,38 @@ export function buildRetryPrompt(originalPrompt: string, error: string): string 
   const isAlternativesError = error.includes('root:') && error.includes('must NOT have fewer than 1 items');
   const isEmptyStringError = error.includes('must NOT have fewer than 1 characters');
   const isIntentError = (error.includes('/primary') || error.includes('/secondary') || error.includes('/implicit')) && isEmptyStringError;
+  const isToneDetailsError = error.includes('/details') && isEmptyStringError;
   
   let specificWarning = '';
   if (isIntentError) {
     const fieldName = error.includes('/primary') ? 'primary' : error.includes('/secondary') ? 'secondary' : 'implicit';
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty string for the "${fieldName}" field. This is NOT allowed. ALL intent fields (primary, secondary, implicit) MUST contain at least 1 character. You MUST provide a meaningful description for each intent level:
-- primary: The main stated purpose or request (what they explicitly want) - MUST be non-empty
-- secondary: The supporting goal or subtext (what else they're trying to achieve) - MUST be non-empty
-- implicit: The unstated emotional or relational goal (what they may not realize they're conveying) - MUST be non-empty
-DO NOT return empty strings for any intent field. Analyze the message and provide actual descriptions.\n`;
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty string or incomplete sentence for the "${fieldName}" field. This is NOT allowed. ALL intent fields (primary, secondary, implicit) MUST:
+1. Contain at least 1 character (NOT empty strings or just spaces)
+2. Be COMPLETE, grammatically correct sentences - DO NOT cut off mid-thought
+3. Provide meaningful descriptions for each intent level:
+   - primary: The main stated purpose or request (what they explicitly want) - MUST be a complete sentence
+   - secondary: The supporting goal or subtext (what else they're trying to achieve) - MUST be a complete sentence
+   - implicit: The unstated emotional or relational goal (what they may not realize they're conveying) - MUST be a complete sentence
+DO NOT return empty strings, spaces, or incomplete sentences for any intent field. Every field must be a complete, coherent description.\n`;
   } else if (isMetricsError) {
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty metrics array []. This is NOT allowed. The metrics array MUST contain exactly 4 metric objects. You MUST provide all 4 metrics:
-1. "Emotional Friction"
-2. "Defensive Response Likelihood"
-3. "Relationship Strain"
-4. "Cooperation Likelihood"
-Each metric must have: name (exact match), value (0-100), category (low/medium/high). DO NOT return an empty metrics array.\n`;
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty metrics array []. This is NOT allowed. The metrics array MUST contain exactly 4 metric objects. You MUST provide all 4 metrics with EXACT names (no variations):
+1. "Emotional Friction" (NOT "Emotional Friction validation" or any other variation)
+2. "Defensive Response Likelihood" (NOT "Defensive Response" or any other variation)
+3. "Relationship Strain" (NOT "Relationship" or any other variation)
+4. "Cooperation Likelihood" (NOT "Cooperation" or any other variation)
+Each metric must have: name (EXACT match from list above), value (0-100), category (low/medium/high). DO NOT return an empty metrics array. DO NOT modify or combine metric names.\n`;
+  } else if (isToneDetailsError) {
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty or incomplete details field. This is a HARD FAILURE. The details field MUST:
+1. Be a COMPLETE, coherent explanation - DO NOT cut off mid-sentence like "The phrases 'felt " - complete your analysis fully
+2. Quote specific words or phrases from the message using single quotes (e.g., 'maybe it's nothing', 'a little', 'felt dismissed')
+3. Explain HOW the specific wording produces the detected emotions
+4. If you cannot complete the details field fully, provide a shorter but complete analysis rather than an incomplete one
+5. Reference linguistic signals explicitly - if the message contains phrases like "maybe it's nothing" or "a little", you MUST quote and explain them
+
+EXAMPLE OF GOOD DETAILS:
+"The phrase 'maybe it's nothing' softens the assertion but does not negate the underlying emotional signal of being dismissed. The use of 'a little' indicates mild intensity, suggesting the speaker perceives their input as not being fully valued."
+
+DO NOT return incomplete sentences. If any section fails to render completely, omit it rather than half-render it.\n`;
   } else if (isEmotionsError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty emotions array []. This is NOT allowed. The emotions array MUST contain at least 1 emotion object. 
 
@@ -314,7 +395,17 @@ CRITICAL RULES FOR EMOTIONS:
 CRITICAL RULES FOR ALTERNATIVES (EQUIVALENT REWRITES):
 1. PRESERVE SPEAKER PERSPECTIVE: If original uses "I", alternatives MUST use "I" (not "you"). If original uses "you", alternatives MUST use "you" (not "I").
 2. PRESERVE EMOTIONAL OWNERSHIP: If speaker expresses their own feelings, alternatives MUST express the speaker's feelings (not observations about others).
-3. PRESERVE COMMUNICATIVE INTENT: If original is a statement, alternatives MUST be statements (not questions or responses). Alternatives are REWRITES, not responses or interpretations.\n`;
+3. PRESERVE COMMUNICATIVE INTENT: If original is a statement, alternatives MUST be statements (not questions or responses). Alternatives are REWRITES, not responses or interpretations.
+4. SEMANTIC UNDERSTANDING AND SHIFTS:
+   - "ignored" is STRONGER than "dismissed"
+   - "overlooked" is SOFTER than "dismissed" (similar meaning frame)
+   - "taken for granted" is STRONGER and DIFFERENT - shifts from attention → value/worth, implies longer-term pattern
+   - "undervalued" is DIFFERENT - shifts from attention/acknowledgment → worth/value assessment
+   - If you use a word that changes the meaning frame, you MUST explicitly acknowledge the shift in your reason (e.g., "This shifts the emotional frame from attention to value")
+   - If you use a stronger word, acknowledge increased risk in your reason
+5. TAG DEFINITIONS: Tags must specify WHAT dimension and FOR WHOM (e.g., "Emotionally Safe (for recipient)", not just "Emotionally Safe").
+6. REASON FIELD: The reason field MUST be a COMPLETE explanation - DO NOT return incomplete sentences like "This version softens " or "This rephrasing strengthens" without completing the thought. Every reason must be a full, coherent explanation that fully explains why the alternative improves on the original. If word substitutions change meaning (attention → value, single incident → pattern), state it explicitly for transparency.
+7. VALIDATION: If any alternative has empty text, empty/incomplete reason, or invalid tags, DO NOT include it. Fewer valid options > broken options.\n`;
   } else if (isEmptyArrayError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. Arrays must have at least the minimum number of items specified. DO NOT return empty arrays.\n`;
   } else if (isEmptyStringError) {
@@ -329,11 +420,38 @@ ${specificWarning}
 REQUIREMENTS YOU MUST FOLLOW:
 - All required fields must be present and non-empty
 - Arrays must have at least the minimum number of items specified (DO NOT return empty arrays)
+- For intent fields (primary, secondary, implicit):
+  * Each field MUST be a COMPLETE, grammatically correct sentence - DO NOT cut off mid-thought
+  * DO NOT return incomplete sentences like "The person is expressing concern about feeling dismissed in a previous interaction and is seeking" - complete the thought
+  * DO NOT return just spaces " " - provide actual meaningful descriptions
+- For impact metrics:
+  * Use EXACT metric names - DO NOT modify or combine them:
+    - "Emotional Friction" (NOT "Emotional Friction validation" or any variation)
+    - "Defensive Response Likelihood" (NOT "Defensive Response" or any variation)
+    - "Relationship Strain" (NOT "Relationship" or any variation)
+    - "Cooperation Likelihood" (NOT "Cooperation" or any variation)
+- For tone analysis details field:
+  * MUST be a COMPLETE, coherent explanation - DO NOT cut off mid-sentence
+  * MUST quote specific words or phrases from the message using single quotes (e.g., 'maybe it's nothing', 'a little')
+  * MUST explain HOW the specific wording produces the detected emotions
+  * If you cannot complete the details field fully, provide a shorter but complete analysis rather than an incomplete one
+  * DO NOT return incomplete sentences like "The phrases 'felt " - complete your analysis fully
 - For alternatives: 
   * You MUST analyze the ACTUAL original message and generate alternatives for THAT specific message - DO NOT copy examples
   * PRESERVE SPEAKER PERSPECTIVE: "I" stays "I", "you" stays "you" - DO NOT switch perspectives
   * PRESERVE EMOTIONAL OWNERSHIP: Speaker's feelings stay speaker's feelings - DO NOT change to observations about others
   * PRESERVE COMMUNICATIVE INTENT: Statements stay statements, questions stay questions - alternatives are REWRITES, not responses
+  * SEMANTIC UNDERSTANDING AND SHIFTS:
+    - "ignored" is STRONGER than "dismissed"
+    - "overlooked" is SOFTER than "dismissed" (similar meaning frame)
+    - "taken for granted" shifts from attention → value/worth, implies longer-term pattern
+    - "undervalued" shifts from attention/acknowledgment → worth/value assessment
+    - If word substitutions change meaning, you MUST explicitly acknowledge the shift (e.g., "This shifts the emotional frame from attention to value")
+    - If using stronger words, acknowledge increased risk in reason
+    - Be transparent about semantic shifts - this builds user trust
+  * TAG DEFINITIONS: Tags must specify dimension and recipient (e.g., "Emotionally Safe (for recipient)", not just "Emotionally Safe")
+  * VALIDATION: text and reason MUST be non-empty (not whitespace) AND COMPLETE - DO NOT return incomplete reasons like "This version softens " - complete the explanation
+  * If you cannot provide a complete reason for an alternative, do not include that alternative. Fewer valid options > broken options.
 - For tone analysis: 
   * emotions array MUST have at least 1 item
   * ANALYZE ACTUAL WORDS in the message - if words like "felt dismissed", "frustrated", "hurt" appear, include negative emotions (e.g., "Hurt (mild)", "Disappointment (low intensity)"), NOT "Neutral"
