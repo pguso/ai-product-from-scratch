@@ -1,0 +1,27 @@
+{
+  "name": "communication-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first communication analysis tool",
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w shared && npm run build -w backend && npm run build -w frontend",
+    "build:shared": "npm run build -w shared",
+    "build:backend": "npm run build -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "start": "npm run start -w backend",
+    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules shared/node_modules backend/dist frontend/dist shared/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
