@@ -82,18 +82,18 @@ The project uses local LLMs in **GGUF format** (not PyTorch, not safetensors). Y
 
 #### Which Models Work?
 
-**✅ Tested and Recommended:**
+**Tested and Recommended:**
 - **Qwen3-1.7B-Q8_0** (~2GB file, ~2GB RAM) - **Best for beginners**
 - **Qwen3-4B-Instruct-2507-Q6_K** (~3GB file, ~3GB RAM) - **Best balance**
 - **Qwen3-8B-Q6_K** (~5GB file, ~5GB RAM) - **Best quality**
 
-**✅ Other Compatible Models:**
+**Other Compatible Models:**
 - Any **Qwen3** model in GGUF format
 - Any **Llama 3** model in GGUF format
 - Any **Mistral** model in GGUF format
 - Any model compatible with `node-llama-cpp` (must be GGUF format)
 
-**❌ Models That Won't Work:**
+**Models That Won't Work:**
 - PyTorch models (`.bin`, `.pth`, `.pt`)
 - Safetensors models (`.safetensors`)
 - ONNX models (`.onnx`)
