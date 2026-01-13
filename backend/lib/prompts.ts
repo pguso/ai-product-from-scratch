@@ -10,7 +10,8 @@ CRITICAL RULES:
 3. Be specific and actionable in your analysis
 4. When uncertain, err toward neutral interpretations
 5. Focus on observable patterns in the message itself, not assumptions about intent
-6. If context is provided, use it only to understand conversation flow - your analysis must reflect the actual current message`;
+6. If context is provided, use it only to understand conversation flow - your analysis must reflect the actual current message
+7. CRITICAL: ALL text fields MUST be COMPLETE - DO NOT truncate mid-word, mid-sentence, or mid-thought. Every field must end with complete words and proper punctuation. Truncated responses are unacceptable and will be rejected.`;
 
 // -----------------------------------------------------------------------------
 // Intent Analysis Prompt
@@ -29,9 +30,15 @@ MESSAGE TO ANALYZE:
 "${message}"
 
 Identify three levels of intent:
-- primary: The main stated purpose or request (what they explicitly want)
+- primary: The main COMMUNICATIVE intent (what relational signal they're sending, NOT just the literal action)
 - secondary: The supporting goal or subtext (what else they're trying to achieve)
 - implicit: The unstated emotional or relational goal (what they may not realize they're conveying)
+
+CRITICAL: In human communication, the PRIMARY intent is often about RELATIONAL SIGNALING, not literal logistics.
+- "It's totally fine — I'll just handle it myself, like last time" is NOT primarily about handling tasks
+- It's about expressing dissatisfaction indirectly, signaling disappointment, or withdrawing cooperation to provoke recognition
+- DO NOT mistake surface behavior (e.g., "willing to manage independently") for communicative intent
+- Look for contradiction markers ("totally fine" when it's not), historical grievance cues ("like last time"), and indirect emotional signaling
 
 CRITICAL RULES FOR INTENT FIELDS:
 1. ALL three fields (primary, secondary, implicit) MUST be non-empty strings with at least 1 character
@@ -39,9 +46,13 @@ CRITICAL RULES FOR INTENT FIELDS:
 3. If the message is simple, still provide meaningful descriptions for each level
 4. Each field must contain actual analysis, not placeholder text
 5. Each field MUST be a complete, grammatically correct sentence - DO NOT cut off mid-sentence
-6. Primary intent MUST be a complete sentence describing what they explicitly want (e.g., "The person is expressing concern about feeling dismissed and seeking validation for their experience")
-7. Secondary intent MUST be a complete sentence describing supporting goals (e.g., "They are also exploring whether the dismissal was unintentional, indicating a desire to validate their experience without escalating conflict")
-8. Implicit intent MUST be a complete sentence describing unstated goals (e.g., "They may be seeking reassurance that their feelings are valid and that the relationship is still safe")
+6. Primary intent MUST describe the RELATIONAL SIGNALING, not just literal actions:
+   - ❌ WRONG: "The speaker is indicating that they are willing to manage the situation independently"
+   - ✅ CORRECT: "The speaker is expressing dissatisfaction indirectly through withdrawal and self-handling"
+   - ✅ CORRECT: "The speaker is signaling disappointment without direct confrontation"
+   - ✅ CORRECT: "The speaker is withdrawing cooperation to provoke recognition of their grievance"
+7. Secondary intent MUST describe supporting relational goals (e.g., "They are also referencing past incidents to signal ongoing resentment without direct accusation")
+8. Implicit intent MUST describe unstated relational goals (e.g., "They may be seeking acknowledgment of their hurt while avoiding direct vulnerability")
 9. DO NOT return incomplete sentences that end mid-thought - every field must be a complete, coherent description
 
 Respond with this exact JSON structure:
@@ -63,57 +74,90 @@ export function buildTonePrompt(message: string, context?: string): string {
 
   return `${BASE_INSTRUCTIONS}
 
-TASK: Analyze the emotional tone and sentiment of the following message.
+TASK
+Analyze the emotional tone and sentiment of the following message.
+
 ${contextSection}
-MESSAGE TO ANALYZE:
+
+MESSAGE:
 "${message}"
 
-Provide:
-- summary: A one-sentence overview of the overall tone (required, non-empty)
-- emotions: Array of detected emotional signals (REQUIRED: must have at least 1 item, NEVER empty), each with:
-  - text: The emotion label - must be descriptive and specific (e.g., "Frustrated", "Appreciative", "Anxious", "Hurt (mild)", "Disappointment (low intensity)", "Emotional discomfort", "Task-focused", "Professional", "Informational") - must be non-empty
-  - sentiment: One of "positive", "neutral", or "negative" (required)
-- details: Specific observations about word choice, phrasing, or patterns that reveal tone. MUST be a complete, coherent explanation (required, non-empty, MUST NOT be cut off mid-sentence). CRITICAL: You MUST quote and reference specific words or phrases from the message (e.g., "The phrase 'maybe it's nothing' softens the assertion", "The use of 'a little' indicates mild intensity"). Explain HOW the specific wording produces the detected emotions. DO NOT return incomplete sentences like "The phrases 'felt " - complete your analysis fully.
+OUTPUT REQUIREMENTS
+Return a JSON object with the following fields ONLY:
 
-CRITICAL RULES FOR EMOTIONS ARRAY:
-1. The emotions array MUST contain at least 1 emotion object - NEVER return an empty array []
-2. ANALYZE THE ACTUAL WORDS IN THE MESSAGE for emotional content:
-   - Words like "felt dismissed", "frustrated", "hurt", "disappointed", "overlooked", "ignored" indicate NEGATIVE emotions
-   - Words like "happy", "grateful", "excited", "appreciative" indicate POSITIVE emotions
-   - If the message expresses negative experiences or feelings, you MUST include negative emotions
-3. IF YOU DETECT EMOTIONS (positive or negative), list them with appropriate labels:
-   - For mild negative emotions: "Hurt (mild)", "Disappointment (low intensity)", "Emotional discomfort", "Slight frustration"
-   - For stronger emotions: "Frustrated", "Annoyed", "Disappointed", "Hurt"
-   - For positive emotions: "Appreciative", "Grateful", "Happy", "Content"
-4. FOR MESSAGES WITH NO STRONG EMOTIONAL CONTENT (purely factual, task-oriented):
-   - DO NOT use "Neutral" as the emotion text - it adds no signal
-   - Instead, use descriptive states that answer "What might the recipient feel?":
-     * "Task-focused" - recipient is focused on the task at hand
-     * "Professional" - recipient perceives professional tone
-     * "Informational" - recipient receives information without strong emotion
-     * "Matter-of-fact" - recipient perceives straightforward, unemotional communication
-   - These descriptive states provide useful signal about the communication style
-5. CONSISTENCY CHECK: If your details mention "negative emotional experience", "frustration", "dismissed", etc., then your emotions array MUST include negative emotions
-6. The emotions array is NEVER allowed to be empty - always include at least one emotion
-7. REMEMBER: Emotion lists should answer "What might the recipient feel?" - not "what else could be there?"
-
-Respond with this exact JSON structure:
 {
-  "summary": "overall tone description",
+  "summary": string,
   "emotions": [
-    { "text": "Emotion1", "sentiment": "negative" },
-    { "text": "Task-focused", "sentiment": "neutral" }
+    { "text": string, "sentiment": "positive" | "neutral" | "negative" }
   ],
-  "details": "detailed analysis with specific examples from the message - MUST quote specific phrases like 'maybe it's nothing' or 'a little' and explain how they produce the detected emotions. MUST be complete, not cut off."
+  "details": string
 }
 
-NOTE: Do NOT use "Neutral" as the emotion text. Use descriptive states like "Task-focused", "Professional", or "Informational" instead.
+────────────────────────
+FIELD RULES
 
-CRITICAL: The details field MUST:
-1. Be a complete, coherent explanation - DO NOT cut off mid-sentence
-2. Quote specific words or phrases from the message using single quotes (e.g., 'maybe it's nothing', 'a little', 'felt dismissed')
-3. Explain HOW the specific wording produces the detected emotions
-4. If you cannot complete the details field fully, provide a shorter but complete analysis rather than an incomplete one`;
+SUMMARY
+- One clear sentence describing the overall tone
+- Required, non-empty
+
+EMOTIONS
+- MUST contain at least 1 item (never empty)
+- Each emotion must include:
+  - text: Descriptive emotion or interaction state in Title Case
+    Examples:
+      - Negative: "Frustrated", "Disappointment (mild)", "Hurt (moderate)", "Resentful"
+      - Positive: "Appreciative", "Grateful", "Relieved"
+      - Neutral states: "Task-Focused", "Professional", "Informational", "Matter-of-Fact"
+  - sentiment: MUST match emotion valence
+    - Negative emotions → "negative"
+    - Positive emotions → "positive"
+    - Neutral states → "neutral"
+
+❗ CRITICAL
+- Frustration is ALWAYS negative (even when mild)
+- DO NOT label negative emotions as positive
+- DO NOT use "Neutral" as an emotion label
+- DO NOT use internal enums, schema leaks, or parsing artifacts
+
+DETAILS
+- Required, non-empty, complete explanation
+- MUST quote specific words or phrases from the message using single quotes
+- MUST explain HOW wording produces the detected emotions
+- Prefer concrete linguistic evidence over speculation
+- If uncertain, state that the interpretation is context-dependent
+
+────────────────────────
+EMOTIONAL DETECTION RULES
+
+1. ANALYZE ACTUAL WORDING
+   - Negative cues: 'frustrated', 'ignored', 'disappointed', 'finally', 'again'
+   - Positive cues: 'thank you', 'appreciate', 'happy', 'grateful'
+
+2. PASSIVE-AGGRESSIVE PATTERNS (NOT neutral)
+   Detect when reassurance + withdrawal or history appears:
+   - Contradiction markers: 'It’s totally fine', 'No problem', 'Whatever'
+   - Historical cues: 'like last time', 'as usual', 'again', 'still'
+   - Withdrawal: 'I’ll handle it myself', 'Never mind', 'Don’t worry about it'
+   → These signal NEGATIVE emotion (e.g., Frustration, Disappointment, Resentment)
+
+3. NO-STRONG-EMOTION CASES
+   - If message is factual or procedural, use neutral states:
+     'Task-Focused', 'Professional', 'Informational'
+   - Do NOT invent emotions
+
+4. CONSISTENCY CHECK
+   - If details mention frustration, disappointment, resentment, or passive-aggression,
+     emotions MUST include negative emotions with sentiment "negative"
+
+────────────────────────
+QUALITY CONSTRAINTS
+- Emotions must answer: “What might the recipient feel?”
+- Use standardized qualifiers only: (mild), (moderate), (strong)
+- Prefer fewer, accurate emotions over many vague ones
+- If full analysis cannot be completed, provide a shorter but COMPLETE one
+
+RETURN ONLY VALID JSON. DO NOT include explanations outside the JSON.
+`;
 }
 
 // -----------------------------------------------------------------------------
@@ -158,9 +202,26 @@ EVALUATION GUIDELINES:
   * LOW to MEDIUM Relationship Strain (vulnerability can strengthen bonds)
   * MEDIUM to HIGH Cooperation Likelihood (recipient wants to help)
   * Emotional Friction depends on the emotional weight of the self-expression
+- URGENT REQUESTS (e.g., "Can you finally send the document today?") should have:
+  * MEDIUM Cooperation Likelihood (40-60) - urgency and social pressure often INCREASE compliance, not decrease it
+  * The word "finally" signals consequences and creates social pressure, which typically increases cooperation
+  * If there's a power imbalance, Cooperation Likelihood can be even higher (60+)
+  * CRITICAL: Cooperation Likelihood should NOT be 0 for urgent requests - urgency increases compliance due to:
+    - Time pressure creating urgency
+    - Social pressure from explicit requests
+    - Consequences implied by words like "finally"
+  * Emotional Friction and Relationship Strain may be medium due to the demanding tone, but cooperation is still likely
 - RECIPIENT-DIRECTED negative messages should have HIGH Emotional Friction, HIGH Defensive Response, HIGH Relationship Strain, and LOW Cooperation Likelihood
+- PASSIVE-AGGRESSIVE messages (e.g., "It's totally fine — I'll just handle it myself, like last time") should have:
+  * MEDIUM to HIGH Emotional Friction (the indirectness creates tension)
+  * MEDIUM to HIGH Defensive Response Likelihood (recipient feels accused without direct communication)
+  * MEDIUM to HIGH Relationship Strain (withdrawal and indirect resentment damage trust)
+  * LOW Cooperation Likelihood (withdrawal signals disengagement)
+  * CRITICAL: If Cooperation Likelihood is LOW due to withdrawal/self-handling, then Emotional Friction and Relationship Strain CANNOT both be LOW - they must be at least MEDIUM
 - Neutral messages should have medium values across metrics
 - Base your evaluation on the actual message text, not assumptions
+- CONSISTENCY RULE: If someone withdraws cooperation (low Cooperation Likelihood), this creates relationship tension - Emotional Friction and Relationship Strain cannot both be low simultaneously
+- CONSISTENCY RULE: Urgent requests with time pressure and social pressure typically have MEDIUM Cooperation Likelihood (40-60), NOT 0
 
 CRITICAL RULES FOR METRICS ARRAY:
 1. The metrics array MUST contain exactly 4 metric objects - NEVER return an empty array []
@@ -179,7 +240,7 @@ CRITICAL RULES FOR METRICS ARRAY:
    - CRITICAL: The category MUST match the value - do not use "medium" for values above 60, or "high" for values below 61
 4. DO NOT combine metric names or add words to them - use the exact names listed above
 
-Also provide recipientResponse: A realistic prediction of how the recipient might think or feel upon reading THIS specific message (required, non-empty string). 
+Also provide recipientResponse: A realistic prediction of how the recipient might think or feel upon reading THIS specific message (required, non-empty string).
 - For SELF-EXPRESSIVE messages: Focus on concern, empathy, desire to help/support
 - For RECIPIENT-DIRECTED messages: Focus on how the recipient perceives being addressed
 - Base this on the actual message content and direction
@@ -299,7 +360,7 @@ VALIDATION RULES:
 CRITICAL RULES FOR EQUIVALENT REWRITES:
 Alternatives must be EQUIVALENT REWRITES that preserve the original message's core meaning, not interpretations or responses.
 
-1. PRESERVE SPEAKER PERSPECTIVE: 
+1. PRESERVE SPEAKER PERSPECTIVE:
    - If original uses "I", alternatives MUST use "I" (not "you" or "they")
    - If original uses "you", alternatives MUST use "you" (not "I" or "they")
    - DO NOT switch from first-person to second-person or vice versa
@@ -411,14 +472,15 @@ export function buildRetryPrompt(originalPrompt: string, error: string): string 
   const isEmptyStringError = error.includes('must NOT have fewer than 1 characters');
   const isIntentError = (error.includes('/primary') || error.includes('/secondary') || error.includes('/implicit')) && isEmptyStringError;
   const isToneDetailsError = error.includes('/details') && isEmptyStringError;
-  
+  const isTruncationError = error.includes('Truncated') || error.includes('truncated') || error.includes('appears truncated');
+
   // Check for alternatives errors: path errors like /0/badge, /0/text, /1/badge, etc. indicate alternatives with empty strings
   const hasAlternativesPath = error.includes('/0/') || error.includes('/1/') || error.includes('/2/');
   const isAlternativesEmptyStringError = hasAlternativesPath && isEmptyStringError;
   // Also check for root array error (empty alternatives array)
   const isAlternativesEmptyArrayError = error.includes('root:') && error.includes('must NOT have fewer than 1 items');
   const isAlternativesError = isAlternativesEmptyStringError || isAlternativesEmptyArrayError;
-  
+
   let specificWarning = '';
   if (isIntentError) {
     const fieldName = error.includes('/primary') ? 'primary' : error.includes('/secondary') ? 'secondary' : 'implicit';
@@ -454,17 +516,23 @@ EXAMPLE OF GOOD DETAILS:
 
 DO NOT return incomplete sentences. If any section fails to render completely, omit it rather than half-render it.\n`;
   } else if (isEmotionsError) {
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty emotions array []. This is NOT allowed. The emotions array MUST contain at least 1 emotion object. 
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty emotions array []. This is NOT allowed. The emotions array MUST contain at least 1 emotion object.
 
 CRITICAL RULES FOR EMOTIONS:
 1. ANALYZE THE ACTUAL WORDS in the message for emotional content (e.g., "felt dismissed", "frustrated", "hurt" = negative emotions)
-2. If you detect negative emotions (like "dismissed", "frustration", "hurt"), you MUST include negative emotions like "Hurt (mild)", "Disappointment (low intensity)", or "Emotional discomfort"
-3. CONSISTENCY: If your details mention negative emotional experiences, your emotions array MUST include negative emotions
-4. FOR MESSAGES WITH NO STRONG EMOTIONAL CONTENT: DO NOT use "Neutral" as the emotion text - use descriptive states like "Task-focused", "Professional", or "Informational" instead
-5. REMEMBER: Emotion lists should answer "What might the recipient feel?" - not "what else could be there?"
-6. DO NOT return an empty emotions array.\n`;
+2. If you detect negative emotions (like "dismissed", "frustration", "hurt"), you MUST include negative emotions like "Hurt (mild)", "Disappointment (mild)", or "Emotional Discomfort"
+3. SENTIMENT MUST MATCH EMOTION TEXT - CRITICAL:
+   - Negative emotions (Frustrated, Hurt, Disappointed, Annoyed, Resentful) MUST have sentiment "negative"
+   - Positive emotions (Appreciative, Grateful, Happy, Content) MUST have sentiment "positive"
+   - ❌ WRONG: {"text":"Frustrated (mild)","sentiment":"positive"} - Frustration is ALWAYS negative
+   - ✅ CORRECT: {"text":"Frustrated (mild)","sentiment":"negative"}
+4. Use Title Case for emotion labels and consistent qualifier format: "(mild)", "(moderate)", or "(strong)" - DO NOT use "(low intensity)", "(high intensity)", or other inconsistent formats
+5. CONSISTENCY: If your details mention negative emotional experiences, your emotions array MUST include negative emotions with sentiment "negative"
+6. FOR MESSAGES WITH NO STRONG EMOTIONAL CONTENT: DO NOT use "Neutral" as the emotion text - use descriptive states like "Task-Focused", "Professional", or "Informational" instead
+7. REMEMBER: Emotion lists should answer "What might the recipient feel?" - not "what else could be there?"
+8. DO NOT return an empty emotions array.\n`;
   } else if (isAlternativesError) {
-    const emptyStringPart = isAlternativesEmptyStringError 
+    const emptyStringPart = isAlternativesEmptyStringError
       ? `\n\nCRITICAL ERROR: You returned EMPTY STRINGS ("") for required fields in alternatives. This is a HARD FAILURE. ALL fields MUST contain actual content:
 - badge: Must be "Option A", "Option B", "Option C" - NOT ""
 - text: Must be a complete rewrite of the original message - NOT ""
@@ -473,11 +541,11 @@ CRITICAL RULES FOR EMOTIONS:
 
 You MUST analyze the ACTUAL original message and generate complete alternatives with ALL fields filled in. DO NOT return empty strings.`
       : '';
-    
+
     const emptyArrayPart = isAlternativesEmptyArrayError
       ? `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed.`
       : '';
-    
+
     specificWarning = `${emptyStringPart}${emptyArrayPart}
 
 CRITICAL ERROR: You returned an empty array [] or empty strings. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return [] or empty strings. Start generating the 3 alternatives now.
@@ -500,6 +568,28 @@ CRITICAL RULES FOR ALTERNATIVES (EQUIVALENT REWRITES):
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. Arrays must have at least the minimum number of items specified. DO NOT return empty arrays.\n`;
   } else if (isEmptyStringError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty string for a required field. This is NOT allowed. ALL string fields MUST contain at least 1 character. You MUST provide actual content, not empty strings. If you're uncertain, provide a reasonable description based on the message.\n`;
+  } else if (isTruncationError) {
+    specificWarning = `\n\nCRITICAL ERROR: Your response was TRUNCATED (cut off mid-word or mid-sentence). This is a HARD FAILURE that undermines the credibility of the analysis.
+
+TRUNCATION DETECTED: Your text ended with incomplete words like "making{" or incomplete sentences. This is UNACCEPTABLE.
+
+YOU MUST:
+1. Complete ALL text fields fully - every word, every sentence must be complete
+2. Ensure all fields end with proper punctuation (periods, commas, etc.) - NOT with incomplete characters like "{", "["
+3. If you're running out of space, provide shorter but COMPLETE responses rather than incomplete ones
+4. Every field must be a complete, coherent thought - never cut off mid-word or mid-sentence
+
+EXAMPLES OF TRUNCATION (DO NOT DO THIS):
+- "This version is making{" ❌ (incomplete word)
+- "The recipient may feel frustrat{" ❌ (incomplete word)
+- "This improves communication by{" ❌ (incomplete sentence)
+
+EXAMPLES OF CORRECT COMPLETION:
+- "This version is making the request more polite." ✅ (complete sentence)
+- "The recipient may feel frustrated." ✅ (complete sentence)
+- "This improves communication by softening the tone." ✅ (complete sentence)
+
+CRITICAL: Truncated responses will be rejected. Generate complete, properly terminated text in ALL fields.\n`;
   }
 
   return `${originalPrompt}
@@ -514,6 +604,11 @@ REQUIREMENTS YOU MUST FOLLOW:
   * Each field MUST be a COMPLETE, grammatically correct sentence - DO NOT cut off mid-thought
   * DO NOT return incomplete sentences like "The person is expressing concern about feeling dismissed in a previous interaction and is seeking" - complete the thought
   * DO NOT return just spaces " " - provide actual meaningful descriptions
+  * PRIMARY INTENT must describe RELATIONAL SIGNALING, not just literal actions:
+    - ❌ WRONG: "The speaker is indicating that they are willing to manage the situation independently"
+    - ✅ CORRECT: "The speaker is expressing dissatisfaction indirectly through withdrawal and self-handling"
+    - ✅ CORRECT: "The speaker is signaling disappointment without direct confrontation"
+  * Look for contradiction markers ("totally fine" when it's not), historical grievance cues ("like last time"), and indirect emotional signaling
 - For impact metrics:
   * Use EXACT metric names - DO NOT modify or combine them:
     - "Emotional Friction" (NOT "Emotional Friction validation" or any variation)
@@ -531,7 +626,7 @@ REQUIREMENTS YOU MUST FOLLOW:
   * MUST explain HOW the specific wording produces the detected emotions
   * If you cannot complete the details field fully, provide a shorter but complete analysis rather than an incomplete one
   * DO NOT return incomplete sentences like "The phrases 'felt " - complete your analysis fully
-- For alternatives: 
+- For alternatives:
   * You MUST analyze the ACTUAL original message and generate alternatives for THAT specific message - DO NOT copy examples
   * PRESERVE SPEAKER PERSPECTIVE: "I" stays "I", "you" stays "you" - DO NOT switch perspectives
   * PRESERVE EMOTIONAL OWNERSHIP: Speaker's feelings stay speaker's feelings - DO NOT change to observations about others
@@ -547,16 +642,29 @@ REQUIREMENTS YOU MUST FOLLOW:
   * TAG DEFINITIONS: Tags must specify dimension and recipient (e.g., "Emotionally Safe (for recipient)", not just "Emotionally Safe")
   * VALIDATION: text and reason MUST be non-empty (not whitespace) AND COMPLETE - DO NOT return incomplete reasons like "This version softens " - complete the explanation
   * If you cannot provide a complete reason for an alternative, do not include that alternative. Fewer valid options > broken options.
-- For tone analysis: 
+- For tone analysis:
   * emotions array MUST have at least 1 item
-  * ANALYZE ACTUAL WORDS in the message - if words like "felt dismissed", "frustrated", "hurt" appear, include negative emotions (e.g., "Hurt (mild)", "Disappointment (low intensity)")
-  * DO NOT use "Neutral" as the emotion text - use descriptive states like "Task-focused", "Professional", or "Informational" instead
+  * ANALYZE ACTUAL WORDS in the message - if words like "felt dismissed", "frustrated", "hurt" appear, include negative emotions (e.g., "Hurt (mild)", "Disappointment (mild)")
+  * DETECT PASSIVE-AGGRESSIVE PATTERNS: Contradiction markers ("It's totally fine" when it's not), historical grievance cues ("like last time", "as usual"), and withdrawal statements ("I'll just handle it myself") indicate negative emotions, NOT neutral or task-focused
+  * Use Title Case for emotion labels and consistent qualifier format: "(mild)", "(moderate)", or "(strong)" - DO NOT use inconsistent formats like "(low intensity)" or "(high intensity)"
+  * DO NOT use "Neutral" as the emotion text - use descriptive states like "Task-Focused", "Professional", or "Informational" instead
+  * DO NOT use schema leaks or parsing artifacts (e.g., "Task-Flow (mod 4 5 6...)" is invalid)
   * Emotion lists should answer "What might the recipient feel?" - not "what else could be there?"
-  * Be consistent: if details mention negative emotions, emotions array must include negative emotions
-- For impact analysis: metrics array MUST have exactly 4 items - all 4 metrics must be provided
+  * Be consistent: if details mention negative emotions, passive-aggressive patterns, or resentment, emotions array must include negative emotions
+- For impact analysis:
+  * metrics array MUST have exactly 4 items - all 4 metrics must be provided
+  * CONSISTENCY RULE: If Cooperation Likelihood is LOW (≤30) due to withdrawal/self-handling, then Emotional Friction and Relationship Strain CANNOT both be LOW - at least one must be MEDIUM or HIGH
+  * Passive-aggressive messages (withdrawal, indirect resentment) should have MEDIUM to HIGH Emotional Friction, MEDIUM to HIGH Relationship Strain, and LOW Cooperation Likelihood
+  * URGENT REQUESTS (e.g., "Can you finally send the document today?") should have MEDIUM Cooperation Likelihood (40-60), NOT 0:
+    - Urgency and social pressure typically INCREASE compliance, not decrease it
+    - Words like "finally" signal consequences and create social pressure
+    - Cooperation Likelihood of 0 is unrealistic for urgent requests - use 40-60 (medium) instead
 - String fields cannot be empty (must have at least 1 character)
+- CRITICAL: ALL text fields must be COMPLETE - never truncate mid-word, mid-sentence, or mid-thought
+- Every text field must end with complete words and proper punctuation - NOT with incomplete characters like "{", "["
+- If truncation is detected, the response will be rejected and you must retry
 - Numeric values must be within the specified ranges
 - All boolean fields must be true or false (not strings)
 
-Please respond with ONLY valid JSON that meets all requirements. No markdown, no explanations, just the JSON.`;
+Please respond with ONLY valid JSON that meets all requirements. No markdown, no explanations, just the JSON. ALL text must be complete - no truncation allowed.`;
 }
