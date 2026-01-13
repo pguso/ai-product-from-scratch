@@ -2,7 +2,6 @@ import {
   LlamaContextSequence,
   LlamaChatSession,
   LlamaJsonSchemaGrammar,
-  QwenChatWrapper,
 } from 'node-llama-cpp';
 import type { ValidateFunction } from 'ajv';
 import type { GenerationOptions } from './types.js';
@@ -11,7 +10,7 @@ import type { LLMLogger } from './llm-logger.js';
 
 /**
  * Detect if text appears to be truncated
- * 
+ *
  * Checks for common truncation patterns:
  * - Words ending with incomplete characters like "{", "[", etc.
  * - Sentences ending mid-word
@@ -19,28 +18,28 @@ import type { LLMLogger } from './llm-logger.js';
  */
 function isTruncated(text: string): boolean {
   if (!text || text.trim().length === 0) return false;
-  
+
   const trimmed = text.trim();
-  
+
   // Check for incomplete words (ending with special characters that shouldn't be at word end)
   const incompleteWordPattern = /[a-zA-Z][{[\]]$/;
   if (incompleteWordPattern.test(trimmed)) {
     return true;
   }
-  
+
   // Check for incomplete sentences (ending with lowercase letter followed by nothing)
   // This catches cases like "making{" where the word is cut off
   const incompleteSentencePattern = /[a-z][{[\]]$/;
   if (incompleteSentencePattern.test(trimmed)) {
     return true;
   }
-  
+
   // Check for incomplete JSON (unclosed brackets/braces at the end)
   const openBraces = (trimmed.match(/{/g) || []).length;
   const closeBraces = (trimmed.match(/}/g) || []).length;
   const openBrackets = (trimmed.match(/\[/g) || []).length;
   const closeBrackets = (trimmed.match(/\]/g) || []).length;
-  
+
   // If we have unclosed structures at the end, it might be truncated
   if (openBraces > closeBraces || openBrackets > closeBrackets) {
     // But only if it ends with an opening character or incomplete structure
@@ -48,19 +47,19 @@ function isTruncated(text: string): boolean {
       return true;
     }
   }
-  
+
   // Check for words ending with incomplete punctuation (like "making{")
   const incompleteWordEnd = /[a-zA-Z][{[\]]\s*$/;
   if (incompleteWordEnd.test(trimmed)) {
     return true;
   }
-  
+
   return false;
 }
 
 /**
  * Validate and fix truncated text in analysis results
- * 
+ *
  * Recursively checks all string fields for truncation and throws error if found.
  * This ensures we catch truncation issues before they reach the user.
  */
@@ -101,7 +100,7 @@ interface GeneratorDependencies {
  */
 export async function generateWithSchema<T>(
   prompt: string,
-  grammar: LlamaJsonSchemaGrammar,
+  grammar: LlamaJsonSchemaGrammar<any>,
   validator: ValidateFunction<T>,
   dependencies: GeneratorDependencies,
   options: GenerationOptions = {},
@@ -167,12 +166,12 @@ export async function generateWithSchema<T>(
       const errorMsg = truncationError instanceof Error ? truncationError.message : String(truncationError);
       console.warn('[LLM] Truncation detected in response:', errorMsg);
       console.warn('[LLM] Truncated response:', JSON.stringify(parsed, null, 2).substring(0, 500));
-      
+
       // Log truncation error
       if (logger && sessionId && analysisType) {
         await logger.logError(sessionId, analysisType, `Truncation detected: ${errorMsg}`);
       }
-      
+
       throw new Error(`Response appears truncated: ${errorMsg}`);
     }
 
@@ -217,13 +216,13 @@ export async function generateWithSchema<T>(
  */
 export async function generateWithRetry<T>(
   promptBuilder: (message: string, context?: string) => string,
-  grammar: LlamaJsonSchemaGrammar,
+  grammar: LlamaJsonSchemaGrammar<any>,
   validator: ValidateFunction<T>,
   message: string,
   dependencies: GeneratorDependencies,
+  buildRetryPrompt: (original: string, error: string) => string,
   context?: string,
   options: GenerationOptions = {},
-  buildRetryPrompt: (original: string, error: string) => string,
   analysisType?: 'intent' | 'tone' | 'impact' | 'alternatives'
 ): Promise<T> {
   const maxAttempts = 2;

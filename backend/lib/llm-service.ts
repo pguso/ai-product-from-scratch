@@ -11,8 +11,11 @@ import type {
   IntentAnalysis,
   ToneAnalysis,
   ImpactAnalysis,
+  ImpactMetric,
   Alternative,
-} from '@communication-mirror/shared';
+  AlternativeTag,
+  Emotion,
+} from '@shared';
 import {
   intentSchema,
   toneSchema,
@@ -65,7 +68,7 @@ function filterValidAlternatives(alternatives: Alternative[]): Alternative[] {
     }
 
     // Check all tags are valid
-    const hasInvalidTag = alt.tags.some(tag => !tag.text || tag.text.trim().length === 0);
+    const hasInvalidTag = alt.tags.some((tag: AlternativeTag) => !tag.text || tag.text.trim().length === 0);
     if (hasInvalidTag) {
       console.warn(`[Alternatives] Dropping option ${alt.badge}: invalid tags`);
       return false;
@@ -87,7 +90,7 @@ function filterValidAlternatives(alternatives: Alternative[]): Alternative[] {
  * emotional friction and relationship strain cannot both be low.
  */
 function normalizeImpactMetrics(impact: ImpactAnalysis): ImpactAnalysis {
-  const normalizedMetrics = impact.metrics.map(metric => {
+  const normalizedMetrics = impact.metrics.map((metric: ImpactMetric) => {
     let category: 'low' | 'medium' | 'high';
     if (metric.value <= 30) {
       category = 'low';
@@ -110,9 +113,9 @@ function normalizeImpactMetrics(impact: ImpactAnalysis): ImpactAnalysis {
 
   // Enforce logical consistency: if cooperation is low due to withdrawal,
   // emotional friction and relationship strain cannot both be low
-  const cooperationMetric = normalizedMetrics.find(m => m.name === 'Cooperation Likelihood');
-  const frictionMetric = normalizedMetrics.find(m => m.name === 'Emotional Friction');
-  const strainMetric = normalizedMetrics.find(m => m.name === 'Relationship Strain');
+  const cooperationMetric = normalizedMetrics.find((m: ImpactMetric) => m.name === 'Cooperation Likelihood');
+  const frictionMetric = normalizedMetrics.find((m: ImpactMetric) => m.name === 'Emotional Friction');
+  const strainMetric = normalizedMetrics.find((m: ImpactMetric) => m.name === 'Relationship Strain');
 
   if (cooperationMetric && frictionMetric && strainMetric) {
     // If cooperation is low (withdrawal/disengagement), friction and strain should be at least medium
@@ -288,7 +291,6 @@ function cleanEmotionLabel(text: string): string {
     'Task-focused': 'Task-Focused',
     'Matter Of Fact': 'Matter-of-Fact',
     'Matter-of-fact': 'Matter-of-Fact',
-    'Matter Of Fact': 'Matter-of-Fact',
   };
 
   if (specialCases[mainEmotion]) {
@@ -349,7 +351,7 @@ function validateNoTruncation<T>(data: T, path: string = 'root'): void {
  * descriptive emotion (e.g., "Task-focused", "Professional", "Informational").
  */
 function filterNeutralEmotions(tone: ToneAnalysis): ToneAnalysis {
-  const filtered = tone.emotions.filter(emotion => {
+  const filtered = tone.emotions.filter((emotion: Emotion) => {
     // Remove "Neutral" entries that add no signal
     if (emotion.text.toLowerCase() === 'neutral' && emotion.sentiment === 'neutral') {
       console.warn(`[Tone] Filtered out redundant neutral emotion`);
@@ -365,7 +367,7 @@ function filterNeutralEmotions(tone: ToneAnalysis): ToneAnalysis {
   }
 
   // Clean emotion labels and validate sentiment matches
-  const cleaned = filtered.map(emotion => {
+  const cleaned = filtered.map((emotion: Emotion) => {
     const cleanedText = cleanEmotionLabel(emotion.text);
     if (cleanedText !== emotion.text) {
       console.log(`[Tone] Cleaned emotion label: "${emotion.text}" -> "${cleanedText}"`);
@@ -435,10 +437,10 @@ export class LLMService {
     alternatives: ValidateFunction<Alternative[]>;
   };
   private grammars: {
-    intent: LlamaJsonSchemaGrammar | null;
-    tone: LlamaJsonSchemaGrammar | null;
-    impact: LlamaJsonSchemaGrammar | null;
-    alternatives: LlamaJsonSchemaGrammar | null;
+    intent: LlamaJsonSchemaGrammar<any> | null;
+    tone: LlamaJsonSchemaGrammar<any> | null;
+    impact: LlamaJsonSchemaGrammar<any> | null;
+    alternatives: LlamaJsonSchemaGrammar<any> | null;
   };
   private isInitialized = false;
   private logger: LLMLogger | null = null;
@@ -679,9 +681,9 @@ export class LLMService {
             sessionId,
             logger: this.logger || undefined,
           },
+          buildRetryPrompt,
           context,
           { temperature: 0.5 },
-          buildRetryPrompt,
           'intent'
         ),
         generateWithRetry(
@@ -695,9 +697,9 @@ export class LLMService {
             sessionId,
             logger: this.logger || undefined,
           },
+          buildRetryPrompt,
           context,
           { temperature: 0.6 },
-          buildRetryPrompt,
           'tone'
         ),
         generateWithRetry(
@@ -711,9 +713,9 @@ export class LLMService {
             sessionId,
             logger: this.logger || undefined,
           },
+          buildRetryPrompt,
           context,
           { temperature: 0.5 },
-          buildRetryPrompt,
           'impact'
         ),
         generateWithRetry(
@@ -727,9 +729,9 @@ export class LLMService {
             sessionId,
             logger: this.logger || undefined,
           },
+          buildRetryPrompt,
           context,
           { temperature: 0.6, maxTokens: 6000 },
-          buildRetryPrompt,
           'alternatives'
         ),
       ]);
@@ -762,7 +764,7 @@ export class LLMService {
    */
   private async generateAnalysis<T>(
     promptBuilder: (message: string, context?: string) => string,
-    grammar: LlamaJsonSchemaGrammar,
+    grammar: LlamaJsonSchemaGrammar<any>,
     validator: ValidateFunction<T>,
     message: string,
     context: string | undefined,
@@ -785,9 +787,9 @@ export class LLMService {
         sessionId,
         logger: this.logger || undefined,
       },
+      buildRetryPrompt,
       context,
       options,
-      buildRetryPrompt,
       analysisType
     );
   }

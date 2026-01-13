@@ -1,5 +1,5 @@
 import { ContextStore, type Session, type Interaction } from './context-store.js';
-import type { AnalysisResult } from '@communication-mirror/shared';
+import type { AnalysisResult } from '@shared';
 
 // =============================================================================
 // Session Manager (Singleton)

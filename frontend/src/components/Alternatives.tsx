@@ -1,4 +1,4 @@
-import type { Alternative } from '@shared';
+import type { Alternative, AlternativeTag } from '@shared';
 import './App.css';
 
 interface AlternativesProps {
@@ -27,7 +27,7 @@ export function Alternatives({ alternatives, onSelect }: AlternativesProps) {
                 <strong>Impact:</strong> {alternative.reason}
               </div>
               <div className="alternative-tags">
-                {alternative.tags.map((tag, tagIndex) => (
+                {alternative.tags.map((tag: AlternativeTag, tagIndex: number) => (
                   <span key={tagIndex} className={`alt-tag ${tag.isPositive ? 'positive' : ''}`}>
                     {tag.text}
                   </span>

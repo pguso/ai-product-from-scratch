@@ -1,4 +1,4 @@
-import type { ToneAnalysis as ToneAnalysisType } from '@shared';
+import type { ToneAnalysis as ToneAnalysisType, Emotion } from '@shared';
 import './App.css';
 
 interface ToneAnalysisProps {
@@ -15,7 +15,7 @@ export function ToneAnalysis({ tone }: ToneAnalysisProps) {
       <div className="section-content">
         <p>{tone.summary}</p>
         <div className="emotion-tags">
-          {tone.emotions.map((emotion, index) => (
+          {tone.emotions.map((emotion: Emotion, index: number) => (
             <div key={index} className={`emotion-tag ${emotion.sentiment}`}>
               {emotion.text}
             </div>

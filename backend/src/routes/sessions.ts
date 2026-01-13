@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import type { ErrorResponse } from '@communication-mirror/shared';
+import type { ErrorResponse } from '@shared';
 
 /**
  * Session Management Routes

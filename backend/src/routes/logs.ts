@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { ErrorResponse } from '@communication-mirror/shared';
+import type { ErrorResponse } from '@shared';
 import type { LLMLogEntry } from '../../lib/llm-logger.js';
 
 /**

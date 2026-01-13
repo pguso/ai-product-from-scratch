@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import type { ErrorResponse } from '@communication-mirror/shared';
+import type { ErrorResponse } from '@shared';
 import type { LLMService } from '../../lib/llm-service.js';
 
 /**

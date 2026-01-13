@@ -4,7 +4,7 @@ import type {
   ToneAnalysis,
   ImpactAnalysis,
   Alternative,
-} from '@communication-mirror/shared';
+} from '@shared';
 
 // =============================================================================
 // JSON Schemas for LLM Output Validation

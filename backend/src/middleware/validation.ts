@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import type { AnalyzeRequest, ErrorResponse } from '@communication-mirror/shared';
+import type { AnalyzeRequest, ErrorResponse } from '@shared';
 import { config } from '../config.js';
 
 /**

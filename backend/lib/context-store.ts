@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '@communication-mirror/shared';
+import type { AnalysisResult } from '@shared';
 
 // =============================================================================
 // Types
@@ -134,8 +134,8 @@ export class ContextStore {
       
       // Include key impact metrics
       const highImpact = interaction.analysis.impact.metrics
-        .filter(m => m.category === 'high')
-        .map(m => m.name)
+        .filter((m: { category: string; name: string }) => m.category === 'high')
+        .map((m: { category: string; name: string }) => m.name)
         .join(', ');
       if (highImpact) {
         contextParts.push(`High impact: ${highImpact}`);

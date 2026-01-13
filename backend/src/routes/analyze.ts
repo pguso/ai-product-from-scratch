@@ -4,7 +4,7 @@ import type {
   AnalyzeResponse,
   ErrorResponse,
   AnalysisResult,
-} from '@communication-mirror/shared';
+} from '@shared';
 import type { LLMService } from '../../lib/llm-service.js';
 
 /**

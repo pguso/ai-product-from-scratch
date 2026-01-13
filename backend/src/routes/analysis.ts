@@ -6,7 +6,7 @@ import type {
   ToneAnalysis,
   ImpactAnalysis,
   Alternative,
-} from '@communication-mirror/shared';
+} from '@shared';
 import type { LLMService } from '../../lib/llm-service.js';
 
 /**

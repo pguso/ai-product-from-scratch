@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { ImpactAnalysis as ImpactAnalysisType } from '@shared';
+import type { ImpactAnalysis as ImpactAnalysisType, ImpactMetric } from '@shared';
 import './App.css';
 
 interface ImpactAnalysisProps {
@@ -12,7 +12,7 @@ export function ImpactAnalysis({ impact }: ImpactAnalysisProps) {
   useEffect(() => {
     // Animate impact bars after DOM is ready
     const timeoutId = setTimeout(() => {
-      impact.metrics.forEach((metric, index) => {
+      impact.metrics.forEach((metric: ImpactMetric, index: number) => {
         const fill = fillRefs.current[index];
         if (fill && metric.value !== undefined && !isNaN(metric.value)) {
           // Store the target width from the metric value (ensure it's between 0-100)
@@ -47,7 +47,7 @@ export function ImpactAnalysis({ impact }: ImpactAnalysisProps) {
       </div>
       <div className="section-content">
         <div className="impact-list">
-          {impact.metrics.map((metric, index) => (
+          {impact.metrics.map((metric: ImpactMetric, index: number) => (
             <div key={index} className="impact-item">
               <div className="impact-header">
                 <div className="impact-name">{metric.name}</div>
