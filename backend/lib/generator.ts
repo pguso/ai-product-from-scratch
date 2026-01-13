@@ -45,11 +45,17 @@ export async function generateWithSchema<T>(
     await logger.logRequest(sessionId, analysisType, prompt, { temperature, maxTokens: maxTokensToUse });
   }
 
+  // Create a more specific system prompt based on analysis type
+  let systemPrompt = 'You are a communication analysis expert. Always respond with valid, complete JSON only. Generate all required items - do not return empty arrays or incomplete responses.';
+  
+  if (analysisType === 'alternatives') {
+    systemPrompt = 'You are a communication analysis expert specializing in rewriting messages. You MUST generate complete alternatives with ALL fields filled in. NEVER return empty strings ("") for any field. Every badge, text, reason, and tag must contain actual content. Always respond with valid, complete JSON only.';
+  }
+
   // Create a new session for this generation
   const session = new LlamaChatSession({
     contextSequence,
-    systemPrompt:
-      'You are a communication analysis expert. Always respond with valid, complete JSON only. Generate all required items - do not return empty arrays or incomplete responses.',
+    systemPrompt,
     /*chatWrapper: new QwenChatWrapper({
       thoughts: 'discourage',
     }),*/

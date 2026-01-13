@@ -192,6 +192,10 @@ export function buildAlternativesPrompt(message: string, context?: string): stri
     ? `\nCONVERSATION CONTEXT:\n${context}\n`
     : '';
 
+  // Determine if message is a question
+  const isQuestion = message.trim().endsWith('?');
+  const messageType = isQuestion ? 'question' : 'statement';
+
   return `${BASE_INSTRUCTIONS}
 
 TASK: Generate exactly 3 alternative phrasings for the message below that achieve the same goal with better emotional impact.
@@ -200,18 +204,61 @@ ${contextSection}
 ORIGINAL MESSAGE TO REWRITE:
 "${message}"
 
-CRITICAL REQUIREMENTS:
-1. You MUST analyze the ACTUAL message above and generate alternatives for THAT specific message
+MESSAGE TYPE: This is a ${messageType}. Your alternatives MUST preserve this type (${isQuestion ? 'questions stay questions' : 'statements stay statements'}).
+
+CRITICAL REQUIREMENTS - DO NOT RETURN EMPTY STRINGS:
+1. You MUST analyze the ACTUAL message above: "${message}"
 2. You MUST return an array with exactly 3 alternatives - DO NOT return an empty array []
 3. Each alternative must be a complete rewrite of the original message above, not a generic example
+4. ALL fields (badge, text, reason, tags) MUST contain actual content - NEVER return empty strings ""
+5. The "text" field MUST be a complete reworded version of "${message}" - DO NOT leave it empty
+6. The "reason" field MUST explain why this alternative improves on "${message}" - DO NOT leave it empty
 
-For each of the 3 alternatives, provide:
-- badge: Label like "Option A", "Option B", "Option C" (required, non-empty string)
-- text: The complete reworded message based on the original message above (required, non-empty string, MUST NOT be empty or just whitespace)
-- reason: Complete explanation of why this version improves on the original message (required, MUST be a complete sentence or sentences, NOT cut off mid-thought, MUST NOT be empty or just whitespace, MUST explain the improvement fully)
-- tags: Array with at least 1 tag (required, minimum 1 item), each tag has:
-  - text: Tag label with clear axis definition (required, non-empty string)
-  - isPositive: true or false (required boolean)
+For each of the 3 alternatives, you MUST provide:
+- badge: Label like "Option A", "Option B", "Option C" (REQUIRED: must be non-empty string like "Option A", NOT "")
+- text: The complete reworded message based on "${message}" (REQUIRED: must be a complete ${messageType} that rewrites "${message}", NOT empty string "")
+- reason: Complete explanation of why this version improves on "${message}" (REQUIRED: must be a complete sentence explaining the improvement, NOT empty string "")
+- tags: Array with at least 1 tag (REQUIRED: minimum 1 item), each tag has:
+  - text: Tag label with clear axis definition (REQUIRED: must be non-empty string like "Polite (tone)", NOT "")
+  - isPositive: true or false (REQUIRED: boolean value)
+
+EXAMPLE FOR A QUESTION LIKE "${message}":
+If the original is a question, your alternatives must also be questions. Here's a complete example:
+
+Original: "Can you send the document today?"
+
+Correct JSON response:
+[
+  {
+    "badge": "Option A",
+    "text": "Would it be possible to send the document today?",
+    "reason": "This version softens the request by using 'would it be possible' instead of 'can you', making it more polite and less demanding while preserving the same core request.",
+    "tags": [
+      { "text": "Polite (tone)", "isPositive": true },
+      { "text": "Less demanding (intensity)", "isPositive": true }
+    ]
+  },
+  {
+    "badge": "Option B",
+    "text": "Could you please send the document today?",
+    "reason": "Adding 'please' increases politeness while maintaining directness. This version is more courteous than the original without losing clarity.",
+    "tags": [
+      { "text": "Courteous (tone)", "isPositive": true },
+      { "text": "Direct (approach)", "isPositive": true }
+    ]
+  },
+  {
+    "badge": "Option C",
+    "text": "I'd appreciate it if you could send the document today.",
+    "reason": "This version shifts from a question to a statement expressing appreciation, which can feel less demanding while still conveying the same urgency and request.",
+    "tags": [
+      { "text": "Appreciative (tone)", "isPositive": true },
+      { "text": "Less demanding (intensity)", "isPositive": true }
+    ]
+  }
+]
+
+Each alternative must be a complete, grammatically correct ${messageType} that preserves the core request from "${message}". DO NOT return empty strings for any field.
 
 TAG DEFINITIONS - CRITICAL:
 Tags must specify WHAT dimension they represent and FOR WHOM. Use clear axis definitions:
@@ -334,7 +381,10 @@ FINAL REMINDER:
 - Generate 3 alternatives for THAT specific message
 - DO NOT copy examples - create new alternatives based on the message above
 - You MUST return an array with exactly 3 alternatives
-- DO NOT return an empty array []`;
+- DO NOT return an empty array []
+- ALL fields (badge, text, reason, tags) MUST be filled with actual content - NO EMPTY STRINGS ""
+- The "text" field must be a complete rewrite of "${message}" as a ${messageType}
+- The "reason" field must explain why each alternative improves on "${message}"`;
 }
 
 // -----------------------------------------------------------------------------
@@ -345,10 +395,16 @@ export function buildRetryPrompt(originalPrompt: string, error: string): string 
   const isEmptyArrayError = error.includes('must NOT have fewer than 1 items');
   const isEmotionsError = error.includes('/emotions') && error.includes('must NOT have fewer than 1 items');
   const isMetricsError = error.includes('/metrics') && error.includes('must NOT have fewer than 1 items');
-  const isAlternativesError = error.includes('root:') && error.includes('must NOT have fewer than 1 items');
   const isEmptyStringError = error.includes('must NOT have fewer than 1 characters');
   const isIntentError = (error.includes('/primary') || error.includes('/secondary') || error.includes('/implicit')) && isEmptyStringError;
   const isToneDetailsError = error.includes('/details') && isEmptyStringError;
+  
+  // Check for alternatives errors: path errors like /0/badge, /0/text, /1/badge, etc. indicate alternatives with empty strings
+  const hasAlternativesPath = error.includes('/0/') || error.includes('/1/') || error.includes('/2/');
+  const isAlternativesEmptyStringError = hasAlternativesPath && isEmptyStringError;
+  // Also check for root array error (empty alternatives array)
+  const isAlternativesEmptyArrayError = error.includes('root:') && error.includes('must NOT have fewer than 1 items');
+  const isAlternativesError = isAlternativesEmptyStringError || isAlternativesEmptyArrayError;
   
   let specificWarning = '';
   if (isIntentError) {
@@ -390,7 +446,23 @@ CRITICAL RULES FOR EMOTIONS:
 4. ONLY use "Neutral" if the message truly has NO emotional content (purely factual statements)
 5. DO NOT return an empty emotions array.\n`;
   } else if (isAlternativesError) {
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return []. Start generating the 3 alternatives now.
+    const emptyStringPart = isAlternativesEmptyStringError 
+      ? `\n\nCRITICAL ERROR: You returned EMPTY STRINGS ("") for required fields in alternatives. This is a HARD FAILURE. ALL fields MUST contain actual content:
+- badge: Must be "Option A", "Option B", "Option C" - NOT ""
+- text: Must be a complete rewrite of the original message - NOT ""
+- reason: Must be a complete explanation - NOT ""
+- tags: Each tag.text must be a non-empty string - NOT ""
+
+You MUST analyze the ACTUAL original message and generate complete alternatives with ALL fields filled in. DO NOT return empty strings.`
+      : '';
+    
+    const emptyArrayPart = isAlternativesEmptyArrayError
+      ? `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed.`
+      : '';
+    
+    specificWarning = `${emptyStringPart}${emptyArrayPart}
+
+CRITICAL ERROR: You returned an empty array [] or empty strings. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return [] or empty strings. Start generating the 3 alternatives now.
 
 CRITICAL RULES FOR ALTERNATIVES (EQUIVALENT REWRITES):
 1. PRESERVE SPEAKER PERSPECTIVE: If original uses "I", alternatives MUST use "I" (not "you"). If original uses "you", alternatives MUST use "you" (not "I").
