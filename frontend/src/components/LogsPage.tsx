@@ -98,13 +98,14 @@ function LogsPage() {
         top: 0, 
         left: 0, 
         right: 0, 
-        background: 'var(--color-bg-primary)', 
+        background: 'var(--color-bg-secondary)', 
         borderBottom: '1px solid var(--color-border)',
         padding: '16px 20px',
         zIndex: 1000,
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
       }}>
         <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Logs</h1>
         <Link 

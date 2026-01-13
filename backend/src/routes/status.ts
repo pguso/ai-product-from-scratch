@@ -1,6 +1,12 @@
 import { Router, Request, Response } from 'express';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { LLMService } from '../../lib/llm-service.js';
 import { config } from '../config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Status routes
@@ -34,10 +40,25 @@ export function createStatusRouter(
    *               $ref: '#/components/schemas/StatusResponse'
    */
   router.get('/api/status', (_req: Request, res: Response) => {
+    // Check if MODEL_PATH is the default value (not set in env)
+    const isDefaultModelPath = config.modelPath === './models/model.gguf';
+    
+    // Check if model file exists
+    // Model path is relative to backend directory (where the server runs)
+    // Try both relative to process.cwd() (project root) and relative to __dirname (backend/src)
+    const backendDir = join(__dirname, '..');
+    const modelPathFromBackend = join(backendDir, config.modelPath);
+    const modelPathFromRoot = join(process.cwd(), config.modelPath);
+    const modelFileExists = existsSync(modelPathFromBackend) || existsSync(modelPathFromRoot);
+    
+    // Model path is missing if it's the default AND the file doesn't exist
+    const modelPathMissing = isDefaultModelPath && !modelFileExists;
+    
     res.json({
       modelReady: llmService.initialized,
       modelLoading,
       modelPath: config.modelPath,
+      modelPathMissing,
       error: modelLoadError
         ? {
             message: modelLoadError.message,

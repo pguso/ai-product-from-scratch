@@ -476,6 +476,3 @@ AVOID:
 - **Variable Injection**: Safely inject user data, context, etc.
 - **Conditional Logic**: Different prompt sections based on conditions
 
-## Next Steps
-
-Continue learning, read [`04-structured-output.md`](./04-structured-output.md) to see how JSON schemas enforce prompt outputs

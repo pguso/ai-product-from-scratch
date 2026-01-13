@@ -500,6 +500,3 @@ function filterValidAlternatives(alternatives: Alternative[]): Alternative[] {
 - **Edge Case Testing**: Test with edge cases (very long messages, special characters, etc.)
 - **Fuzzing**: Random input testing to find validation bugs
 
-## Next Steps
-
-Continue learning, read [`10-trade-offs-lessons.md`](./10-trade-offs-lessons.md) to understand design decisions and trade-offs

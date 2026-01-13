@@ -438,6 +438,3 @@ export async function generateWithRetry<T>(...) {
 - **Dependency Graph**: Define analysis dependencies
 - **Optimization**: Skip analyses if dependencies fail
 
-## Next Steps
-
-Continue learning, read [`06-api-design.md`](./06-api-design.md) to see how the API coordinates these analyses

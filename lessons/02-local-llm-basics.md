@@ -345,6 +345,3 @@ const contextSequence = new LlamaContextSequence({
 - **Cloud APIs**: For high-traffic, low-latency needs, or when local hardware is insufficient
 - **Hybrid**: Route based on data sensitivity, latency requirements, or cost
 
-## Next Steps
-
-Now that you understand local LLMs, continue and read [`03-prompt-engineering.md`](./03-prompt-engineering.md) to learn how prompts are designed

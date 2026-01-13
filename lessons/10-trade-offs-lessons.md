@@ -363,49 +363,6 @@ Some issues are easier to fix in post-processing than in prompts (especially log
 
 Focus on understanding fundamentals. Production concerns can be added later.
 
-## Next Steps
-
-You've completed the learning path! Here's what to do next:
-
-### 1. **Explore the Codebase**
-
-Read the actual code with your new understanding:
-- [`backend/lib/prompts.ts`](../backend/lib/prompts.ts): See all prompts with their documentation
-- [`backend/lib/generator.ts`](../backend/lib/generator.ts): See validation and retry logic
-- [`backend/lib/llm-service.ts`](../backend/lib/llm-service.ts): See how analyses are coordinated
-- [`backend/src/routes/analyze.ts`](../backend/src/routes/analyze.ts): See API implementation
-
-### 2. **Modify and Experiment**
-
-Try modifying the code:
-- Change prompts, observe how outputs change
-- Add new analysis types
-- Modify validation rules
-- Experiment with different models
-
-### 3. **Build Your Own AI Product**
-
-Apply what you learned:
-- Start with simple prompts
-- Add validation layers
-- Implement error handling
-- Iterate based on real failures
-
-### 4. **Add Production Features**
-
-If you want to productionize:
-- Add authentication
-- Add database persistence
-- Add rate limiting
-- Add monitoring
-- Add tests
-
-### 5. **Share and Learn**
-
-- Share your learnings
-- Contribute improvements
-- Help others learn
-
 ## Conclusion
 
 This project teaches **how AI products work** by building a real, working system. You've learned:

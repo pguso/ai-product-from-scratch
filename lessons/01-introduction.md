@@ -245,8 +245,3 @@ Start with fundamentals and build up:
 - Accessibility (WCAG compliance)
 - Performance optimization (code splitting, lazy loading)
 
-## Next Steps
-
-Ready to dive in? Continue to the next lesson, read [`02-local-llm-basics.md`](./02-local-llm-basics.md) to understand how local LLMs work
-
-The codebase is your playground. Read, run, modify, and learn!

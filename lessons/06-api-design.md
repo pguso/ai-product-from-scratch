@@ -613,6 +613,3 @@ export function createAnalyzeHandler(
 - **Rate Limiting**: Gateway-level rate limiting
 - **Request Transformation**: Modify requests/responses
 
-## Next Steps
-
-Continue learning, read [`07-frontend-integration.md`](./07-frontend-integration.md) to see how the frontend consumes these APIs

@@ -588,6 +588,3 @@ if (response.data.success) {
 - **Push Notifications**: Notify users of updates
 - **Background Sync**: Sync data when online
 
-## Next Steps
-
-Continue learning, read [`08-session-management.md`](./08-session-management.md) to understand session handling in detail

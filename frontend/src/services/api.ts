@@ -309,6 +309,29 @@ export async function checkApiHealth(): Promise<boolean> {
 }
 
 /**
+ * Get model and service status
+ */
+export interface ModelStatus {
+  modelReady: boolean;
+  modelLoading: boolean;
+  modelPath: string;
+  modelPathMissing?: boolean;
+  error: {
+    message: string;
+    stack?: string;
+  } | null;
+}
+
+export async function getModelStatus(): Promise<ModelStatus> {
+  try {
+    const response = await apiClient.get<ModelStatus>('/status');
+    return response.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+/**
  * Get list of all sessions with logs
  */
 export async function getSessionsList(): Promise<SessionInfo[]> {
@@ -339,3 +362,58 @@ export async function getSessionLogs(sessionId: string): Promise<LogEntry[]> {
 }
 
 export type { SessionInfo, LogEntry };
+
+/**
+ * Lesson types
+ */
+export interface Lesson {
+  id: string;
+  title: string;
+  filename: string;
+}
+
+interface LessonsListResponse {
+  success: true;
+  lessons: Lesson[];
+}
+
+interface LessonContent {
+  id: string;
+  filename: string;
+  content: string;
+}
+
+interface LessonResponse {
+  success: true;
+  lesson: LessonContent;
+}
+
+/**
+ * Get list of all available lessons
+ */
+export async function getLessonsList(): Promise<Lesson[]> {
+  try {
+    const response = await apiClient.get<LessonsListResponse>('/docs/lessons');
+    if (response.data.success) {
+      return response.data.lessons;
+    }
+    throw new Error('Invalid response from server');
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+/**
+ * Get content of a specific lesson
+ */
+export async function getLessonContent(lessonId: string): Promise<LessonContent> {
+  try {
+    const response = await apiClient.get<LessonResponse>(`/docs/lessons/${lessonId}`);
+    if (response.data.success) {
+      return response.data.lesson;
+    }
+    throw new Error('Invalid response from server');
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}

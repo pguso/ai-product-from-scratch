@@ -475,6 +475,3 @@ try {
 - **User-Friendly Errors**: Translate technical errors to user messages
 - **Error Recovery**: Automatic retry with different prompts/schemas
 
-## Next Steps
-
-Continue learning, read [`05-multi-step-reasoning.md`](./05-multi-step-reasoning.md) to see how multiple analyses are coordinated

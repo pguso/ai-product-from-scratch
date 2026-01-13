@@ -542,6 +542,3 @@ getStats() {
 - **Timeline**: Visual timeline of conversation
 - **Export**: Export session as transcript
 
-## Next Steps
-
-Continue learning, read [`09-validation-error-handling.md`](./09-validation-error-handling.md) to see how errors are handled

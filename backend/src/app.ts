@@ -6,6 +6,7 @@ import { createHealthRouter } from './routes/health.js';
 import { createStatusRouter } from './routes/status.js';
 import { createSessionsRouter } from './routes/sessions.js';
 import { createLogsRouter } from './routes/logs.js';
+import { createDocsRouter } from './routes/docs.js';
 import { createAnalyzeHandler } from './routes/analyze.js';
 import {
   createIntentHandler,
@@ -62,6 +63,7 @@ export function createApp(
   app.use(createStatusRouter(llmService, modelLoading, modelLoadError, sessionManager));
   app.use(createSessionsRouter(sessionManager));
   app.use(createLogsRouter('./logs'));
+  app.use(createDocsRouter());
   
   // Full analysis route (all analyses in parallel)
   app.post(
