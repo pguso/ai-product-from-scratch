@@ -5,13 +5,16 @@
 const BASE_INSTRUCTIONS = `You are a communication analysis expert specializing in interpersonal dynamics, emotional intelligence, and professional communication.
 
 CRITICAL RULES:
-1. Respond with ONLY valid JSON - no explanations, no markdown, no prefixes
-2. Base analysis STRICTLY on the provided message text - analyze what is actually written, not what you assume
-3. Be specific and actionable in your analysis
-4. When uncertain, err toward neutral interpretations
-5. Focus on observable patterns in the message itself, not assumptions about intent
-6. If context is provided, use it only to understand conversation flow - your analysis must reflect the actual current message
-7. CRITICAL: ALL text fields MUST be COMPLETE - DO NOT truncate mid-word, mid-sentence, or mid-thought. Every field must end with complete words and proper punctuation. Truncated responses are unacceptable and will be rejected.`;
+1. Respond with ONLY valid JSON. No markdown, no explanations, no prefixes.
+2. Base analysis STRICTLY on the provided message text. Do NOT invent context.
+3. Describe what is LINGUISTICALLY SUPPORTED by the wording.
+4. Avoid mind-reading: use "may", "can signal", "can be perceived as" when intent is not explicit.
+5. Focus on observable wording patterns (phrases, structure, emphasis).
+6. If context is provided, use it ONLY to understand flow, never to override the message itself.
+7. ALL text fields MUST be COMPLETE, grammatically correct, and end with proper punctuation.
+8. NEVER leak system language (e.g., “Response contains…”, enums, parsing artifacts).
+9. If uncertain, provide a restrained, context-aware interpretation rather than speculation.
+`;
 
 // -----------------------------------------------------------------------------
 // Intent Analysis Prompt
@@ -19,47 +22,42 @@ CRITICAL RULES:
 
 export function buildIntentPrompt(message: string, context?: string): string {
   const contextSection = context
-    ? `\nCONVERSATION CONTEXT:\n${context}\n`
+    ? `\nCONVERSATION CONTEXT (for flow only):\n${context}\n`
     : '';
 
   return `${BASE_INSTRUCTIONS}
 
-TASK: Analyze the communication intent of the following message.
+TASK
+Analyze the COMMUNICATIVE INTENT of the message below.
+
 ${contextSection}
-MESSAGE TO ANALYZE:
+
+MESSAGE:
 "${message}"
 
 Identify three levels of intent:
-- primary: The main COMMUNICATIVE intent (what relational signal they're sending, NOT just the literal action)
-- secondary: The supporting goal or subtext (what else they're trying to achieve)
-- implicit: The unstated emotional or relational goal (what they may not realize they're conveying)
 
-CRITICAL: In human communication, the PRIMARY intent is often about RELATIONAL SIGNALING, not literal logistics.
-- "It's totally fine — I'll just handle it myself, like last time" is NOT primarily about handling tasks
-- It's about expressing dissatisfaction indirectly, signaling disappointment, or withdrawing cooperation to provoke recognition
-- DO NOT mistake surface behavior (e.g., "willing to manage independently") for communicative intent
-- Look for contradiction markers ("totally fine" when it's not), historical grievance cues ("like last time"), and indirect emotional signaling
+- primary: The main goal the speaker is trying to accomplish (be direct and practical)
+- secondary: Any supporting goal or subtext
+- implicit: A possible unstated concern (only if linguistically supported)
 
-CRITICAL RULES FOR INTENT FIELDS:
-1. ALL three fields (primary, secondary, implicit) MUST be non-empty strings with at least 1 character
-2. DO NOT return empty strings "" for any field
-3. If the message is simple, still provide meaningful descriptions for each level
-4. Each field must contain actual analysis, not placeholder text
-5. Each field MUST be a complete, grammatically correct sentence - DO NOT cut off mid-sentence
-6. Primary intent MUST describe the RELATIONAL SIGNALING, not just literal actions:
-   - ❌ WRONG: "The speaker is indicating that they are willing to manage the situation independently"
-   - ✅ CORRECT: "The speaker is expressing dissatisfaction indirectly through withdrawal and self-handling"
-   - ✅ CORRECT: "The speaker is signaling disappointment without direct confrontation"
-   - ✅ CORRECT: "The speaker is withdrawing cooperation to provoke recognition of their grievance"
-7. Secondary intent MUST describe supporting relational goals (e.g., "They are also referencing past incidents to signal ongoing resentment without direct accusation")
-8. Implicit intent MUST describe unstated relational goals (e.g., "They may be seeking acknowledgment of their hurt while avoiding direct vulnerability")
-9. DO NOT return incomplete sentences that end mid-thought - every field must be a complete, coherent description
+CALIBRATION RULES:
+1. Simple requests should have simple interpretations. "Send the document" is primarily about getting a document.
+2. Only infer relational dynamics when language explicitly signals them (e.g., "you always", "I feel like you don't care").
+3. The word "finally" indicates prior delays and mild impatience—NOT a relationship crisis.
+4. Match analysis depth to message complexity. A 7-word request needs a proportionate analysis.
+5. If no implicit intent is linguistically supported, say: "No strong implicit intent detected beyond the surface request."
 
-Respond with this exact JSON structure:
+AVOID:
+- Inflating routine requests into relationship commentary
+- Psychoanalyzing when a practical interpretation suffices
+- Using therapy-speak ("reassurance-seeking", "emotional validation") for transactional messages
+
+Respond with EXACT JSON:
 {
-  "primary": "description of primary intent",
-  "secondary": "description of secondary intent",
-  "implicit": "description of implicit intent"
+  "primary": "Direct statement of main goal.",
+  "secondary": "Supporting goal or practical subtext.",
+  "implicit": "Unstated concern only if language supports it, otherwise state none detected."
 }`;
 }
 
@@ -69,22 +67,20 @@ Respond with this exact JSON structure:
 
 export function buildTonePrompt(message: string, context?: string): string {
   const contextSection = context
-    ? `\nCONVERSATION CONTEXT:\n${context}\n`
+    ? `\nCONVERSATION CONTEXT (for flow only):\n${context}\n`
     : '';
 
   return `${BASE_INSTRUCTIONS}
 
 TASK
-Analyze the emotional tone and sentiment of the following message.
+Analyze the emotional tone of the following message.
 
 ${contextSection}
 
 MESSAGE:
 "${message}"
 
-OUTPUT REQUIREMENTS
-Return a JSON object with the following fields ONLY:
-
+Return ONLY this JSON structure:
 {
   "summary": string,
   "emotions": [
@@ -93,71 +89,40 @@ Return a JSON object with the following fields ONLY:
   "details": string
 }
 
-────────────────────────
-FIELD RULES
+CALIBRATION RULES:
 
 SUMMARY
-- One clear sentence describing the overall tone
-- Required, non-empty
+- Match tone description to actual intensity. "Mildly impatient" ≠ "frustrated and demanding"
+- Use precise language: "direct", "businesslike", "mildly annoyed" are often more accurate than dramatic descriptors
 
 EMOTIONS
-- MUST contain at least 1 item (never empty)
-- Each emotion must include:
-  - text: Descriptive emotion or interaction state in Title Case
-    Examples:
-      - Negative: "Frustrated", "Disappointment (mild)", "Hurt (moderate)", "Resentful"
-      - Positive: "Appreciative", "Grateful", "Relieved"
-      - Neutral states: "Task-Focused", "Professional", "Informational", "Matter-of-Fact"
-  - sentiment: MUST match emotion valence
-    - Negative emotions → "negative"
-    - Positive emotions → "positive"
-    - Neutral states → "neutral"
-
-❗ CRITICAL
-- Frustration is ALWAYS negative (even when mild)
-- DO NOT label negative emotions as positive
-- DO NOT use "Neutral" as an emotion label
-- DO NOT use internal enums, schema leaks, or parsing artifacts
+- Scale to message intensity:
+  * "Can you send this?" → Task-Focused (neutral)
+  * "Can you finally send this?" → Mildly Impatient (negative), Task-Focused (neutral)
+  * "I've asked three times and you still haven't sent it" → Frustrated (negative)
+- DO NOT over-detect. One impatient word ≠ emotional turmoil.
+- Frustration requires explicit frustration markers, not just urgency.
 
 DETAILS
-- Required, non-empty, complete explanation
-- MUST quote specific words or phrases from the message using single quotes
-- MUST explain HOW wording produces the detected emotions
-- Prefer concrete linguistic evidence over speculation
-- If uncertain, state that the interpretation is context-dependent
+- Quote the specific words driving your analysis
+- Explain proportionately—a short message needs a short explanation
+- "The word 'finally' indicates prior delays and mild impatience" is sufficient. No need for paragraphs.
 
-────────────────────────
-EMOTIONAL DETECTION RULES
+PASSIVE-AGGRESSIVE DETECTION:
+Only flag as passive-aggressive when MULTIPLE markers present:
+- Contradiction: "It's fine" + context suggesting it's not fine
+- Sarcasm markers: "Oh, great", "Thanks so much"
+- Withdrawal + blame: "I'll just do it myself since..."
 
-1. ANALYZE ACTUAL WORDING
-   - Negative cues: 'frustrated', 'ignored', 'disappointed', 'finally', 'again'
-   - Positive cues: 'thank you', 'appreciate', 'happy', 'grateful'
+CRITICAL - EMOTIONS FIELD FORMAT:
+- "text" MUST be an emotion label like "Frustrated (mild)", "Impatient", "Task-Focused"
+- "text" must NEVER contain the original message or any part of it
+- WRONG: {"text": "Can you finally send the document?", "sentiment": "negative"}
+- CORRECT: {"text": "Impatient (mild)", "sentiment": "negative"}
 
-2. PASSIVE-AGGRESSIVE PATTERNS (NOT neutral)
-   Detect when reassurance + withdrawal or history appears:
-   - Contradiction markers: 'It’s totally fine', 'No problem', 'Whatever'
-   - Historical cues: 'like last time', 'as usual', 'again', 'still'
-   - Withdrawal: 'I’ll handle it myself', 'Never mind', 'Don’t worry about it'
-   → These signal NEGATIVE emotion (e.g., Frustration, Disappointment, Resentment)
+Single words like "finally" are NOT passive-aggressive—they're direct expressions of impatience.
 
-3. NO-STRONG-EMOTION CASES
-   - If message is factual or procedural, use neutral states:
-     'Task-Focused', 'Professional', 'Informational'
-   - Do NOT invent emotions
-
-4. CONSISTENCY CHECK
-   - If details mention frustration, disappointment, resentment, or passive-aggression,
-     emotions MUST include negative emotions with sentiment "negative"
-
-────────────────────────
-QUALITY CONSTRAINTS
-- Emotions must answer: “What might the recipient feel?”
-- Use standardized qualifiers only: (mild), (moderate), (strong)
-- Prefer fewer, accurate emotions over many vague ones
-- If full analysis cannot be completed, provide a shorter but COMPLETE one
-
-RETURN ONLY VALID JSON. DO NOT include explanations outside the JSON.
-`;
+Return ONLY valid JSON.`;
 }
 
 // -----------------------------------------------------------------------------
@@ -166,94 +131,58 @@ RETURN ONLY VALID JSON. DO NOT include explanations outside the JSON.
 
 export function buildImpactPrompt(message: string, context?: string): string {
   const contextSection = context
-    ? `\nCONVERSATION CONTEXT (for reference only - analyze the CURRENT message below):
-${context}
-\nIMPORTANT: The context above is only to help you understand the conversation flow. Your analysis MUST be based on the actual message text below, not on previous messages.`
+    ? `\nCONVERSATION CONTEXT (for reference only):\n${context}\n`
     : '';
 
   return `${BASE_INSTRUCTIONS}
 
-TASK: Predict how the recipient will likely perceive and react to this SPECIFIC message.
+TASK
+Predict how a reasonable recipient is likely to perceive THIS message.
 
 ${contextSection}
-MESSAGE TO ANALYZE:
+
+MESSAGE:
 "${message}"
 
-CRITICAL: Analyze THIS message above based on its actual words, tone, and content. Do not assume negativity based on context - evaluate the message itself objectively.
+CALIBRATION FRAMEWORK:
 
-IMPORTANT: First determine the MESSAGE DIRECTION:
-- SELF-EXPRESSIVE: Messages where the speaker expresses their own feelings, struggles, or experiences (e.g., "I am hopeless", "I'm struggling with this", "I feel overwhelmed"). These messages are ABOUT THE SPEAKER, not the recipient.
-- RECIPIENT-DIRECTED: Messages that are about, directed at, or blame the recipient (e.g., "You are wrong", "This is your fault", "You need to fix this"). These messages are ABOUT THE RECIPIENT.
+BASELINE: Most workplace messages land in LOW friction territory (0-30).
+Reserve MEDIUM (31-60) for clearly tense messages.
+Reserve HIGH (61-100) for hostile, accusatory, or relationship-damaging messages.
 
-The message direction CRITICALLY affects recipient response:
-- SELF-EXPRESSIVE messages typically evoke: concern, empathy, desire to help, support - NOT defensiveness
-- RECIPIENT-DIRECTED messages typically evoke: defensiveness, blame, conflict, resistance
+SCORING GUIDE:
 
-Evaluate these four metrics (0-100 scale) based on the message above:
-1. "Emotional Friction" - How much negative emotion this SPECIFIC message may trigger (0 = none, 100 = very high)
-2. "Defensive Response Likelihood" - Probability recipient becomes defensive from THIS message (0 = very unlikely, 100 = very likely)
-3. "Relationship Strain" - Potential damage to the relationship from THIS message (0 = none, 100 = severe)
-4. "Cooperation Likelihood" - Chance recipient will comply/cooperate positively with THIS message (0 = very unlikely, 100 = very likely)
+"Can you send the document?"
+→ Friction: 5-10, Defensive: 5-10, Strain: 0-10, Cooperation: 70-80
 
-EVALUATION GUIDELINES:
-- Positive/reassuring messages (e.g., "All is fine", "Thank you", "Great work") should have LOW Emotional Friction, LOW Defensive Response, LOW Relationship Strain, and HIGH Cooperation Likelihood
-- SELF-EXPRESSIVE messages (e.g., "I am hopeless", "I'm struggling") should have:
-  * LOW to MEDIUM Defensive Response Likelihood (recipient feels concern, not attacked)
-  * LOW to MEDIUM Relationship Strain (vulnerability can strengthen bonds)
-  * MEDIUM to HIGH Cooperation Likelihood (recipient wants to help)
-  * Emotional Friction depends on the emotional weight of the self-expression
-- URGENT REQUESTS (e.g., "Can you finally send the document today?") should have:
-  * MEDIUM Cooperation Likelihood (40-60) - urgency and social pressure often INCREASE compliance, not decrease it
-  * The word "finally" signals consequences and creates social pressure, which typically increases cooperation
-  * If there's a power imbalance, Cooperation Likelihood can be even higher (60+)
-  * CRITICAL: Cooperation Likelihood should NOT be 0 for urgent requests - urgency increases compliance due to:
-    - Time pressure creating urgency
-    - Social pressure from explicit requests
-    - Consequences implied by words like "finally"
-  * Emotional Friction and Relationship Strain may be medium due to the demanding tone, but cooperation is still likely
-- RECIPIENT-DIRECTED negative messages should have HIGH Emotional Friction, HIGH Defensive Response, HIGH Relationship Strain, and LOW Cooperation Likelihood
-- PASSIVE-AGGRESSIVE messages (e.g., "It's totally fine — I'll just handle it myself, like last time") should have:
-  * MEDIUM to HIGH Emotional Friction (the indirectness creates tension)
-  * MEDIUM to HIGH Defensive Response Likelihood (recipient feels accused without direct communication)
-  * MEDIUM to HIGH Relationship Strain (withdrawal and indirect resentment damage trust)
-  * LOW Cooperation Likelihood (withdrawal signals disengagement)
-  * CRITICAL: If Cooperation Likelihood is LOW due to withdrawal/self-handling, then Emotional Friction and Relationship Strain CANNOT both be LOW - they must be at least MEDIUM
-- Neutral messages should have medium values across metrics
-- Base your evaluation on the actual message text, not assumptions
-- CONSISTENCY RULE: If someone withdraws cooperation (low Cooperation Likelihood), this creates relationship tension - Emotional Friction and Relationship Strain cannot both be low simultaneously
-- CONSISTENCY RULE: Urgent requests with time pressure and social pressure typically have MEDIUM Cooperation Likelihood (40-60), NOT 0
+"Can you finally send the document today?"
+→ Friction: 15-25, Defensive: 15-25, Strain: 10-20, Cooperation: 60-70
+(Mild pressure INCREASES cooperation, doesn't tank it)
 
-CRITICAL RULES FOR METRICS ARRAY:
-1. The metrics array MUST contain exactly 4 metric objects - NEVER return an empty array []
-2. You MUST provide all 4 metrics listed above - no exceptions
-3. Each metric must have:
-   - name: The EXACT metric name from this list (required, non-empty, must match EXACTLY - no variations, no additions):
-     * "Emotional Friction" (NOT "Emotional Friction validation" or any other variation)
-     * "Defensive Response Likelihood" (NOT "Defensive Response" or any other variation)
-     * "Relationship Strain" (NOT "Relationship" or any other variation)
-     * "Cooperation Likelihood" (NOT "Cooperation" or any other variation)
-   - value: Integer between 0 and 100 inclusive (required, must be 0-100)
-   - category: MUST match the value according to these EXACT thresholds (required):
-     * "low" for values 0-30 (inclusive)
-     * "medium" for values 31-60 (inclusive)
-     * "high" for values 61-100 (inclusive)
-   - CRITICAL: The category MUST match the value - do not use "medium" for values above 60, or "high" for values below 61
-4. DO NOT combine metric names or add words to them - use the exact names listed above
+"I've asked you three times. This is unacceptable."
+→ Friction: 50-65, Defensive: 55-70, Strain: 45-60, Cooperation: 35-50
 
-Also provide recipientResponse: A realistic prediction of how the recipient might think or feel upon reading THIS specific message (required, non-empty string).
-- For SELF-EXPRESSIVE messages: Focus on concern, empathy, desire to help/support
-- For RECIPIENT-DIRECTED messages: Focus on how the recipient perceives being addressed
-- Base this on the actual message content and direction
+CRITICAL RULES:
+1. Urgency and mild pressure typically INCREASE cooperation (social pressure works)
+2. "Finally" is mild impatience, not a relationship rupture—keep scores proportionate
+3. Cooperation Likelihood should reflect realistic human behavior, not worst-case
+4. A reasonable professional receiving "Can you finally send X?" would comply, possibly apologize—not spiral into defensiveness
 
-Respond with this exact JSON structure:
+Metrics (ALL REQUIRED):
+- Emotional Friction
+- Defensive Response Likelihood
+- Relationship Strain
+- Cooperation Likelihood
+
+Return EXACT JSON:
 {
   "metrics": [
-    { "name": "Emotional Friction", "value": <0-100>, "category": "low|medium|high" },
-    { "name": "Defensive Response Likelihood", "value": <0-100>, "category": "low|medium|high" },
-    { "name": "Relationship Strain", "value": <0-100>, "category": "low|medium|high" },
-    { "name": "Cooperation Likelihood", "value": <0-100>, "category": "low|medium|high" }
+    { "name": "Emotional Friction", "value": 0, "category": "low" },
+    { "name": "Defensive Response Likelihood", "value": 0, "category": "low" },
+    { "name": "Relationship Strain", "value": 0, "category": "low" },
+    { "name": "Cooperation Likelihood", "value": 0, "category": "low" }
   ],
-  "recipientResponse": "The recipient may feel..."
+  "recipientResponse": "Brief, realistic prediction of recipient behavior."
 }`;
 }
 
@@ -266,199 +195,66 @@ export function buildAlternativesPrompt(message: string, context?: string): stri
     ? `\nCONVERSATION CONTEXT:\n${context}\n`
     : '';
 
-  // Determine if message is a question
   const isQuestion = message.trim().endsWith('?');
   const messageType = isQuestion ? 'question' : 'statement';
 
   return `${BASE_INSTRUCTIONS}
 
-TASK: Generate exactly 3 alternative phrasings for the message below that achieve the same goal with better emotional impact.
+TASK
+Generate EXACTLY 3 alternative phrasings that may improve communication dynamics.
 
 ${contextSection}
-ORIGINAL MESSAGE TO REWRITE:
+
+ORIGINAL MESSAGE:
 "${message}"
 
-MESSAGE TYPE: This is a ${messageType}. Your alternatives MUST preserve this type (${isQuestion ? 'questions stay questions' : 'statements stay statements'}).
+MESSAGE TYPE: ${messageType.toUpperCase()}
 
-CRITICAL REQUIREMENTS - DO NOT RETURN EMPTY STRINGS:
-1. You MUST analyze the ACTUAL message above: "${message}"
-2. You MUST return an array with exactly 3 alternatives - DO NOT return an empty array []
-3. Each alternative must be a complete rewrite of the original message above, not a generic example
-4. ALL fields (badge, text, reason, tags) MUST contain actual content - NEVER return empty strings ""
-5. The "text" field MUST be a complete reworded version of "${message}" - DO NOT leave it empty
-6. The "reason" field MUST explain why this alternative improves on "${message}" - DO NOT leave it empty
+PHILOSOPHY:
+Not every message needs softening. Your job is to offer OPTIONS across a spectrum:
+- Option A: Softer/more diplomatic version
+- Option B: Clearer/more direct version (directness has value!)
+- Option C: Context-dependent alternative (e.g., if relationship is strained vs. if it's fine)
 
-For each of the 3 alternatives, you MUST provide:
-- badge: Label like "Option A", "Option B", "Option C" (REQUIRED: must be non-empty string like "Option A", NOT "")
-- text: The complete reworded message based on "${message}" (REQUIRED: must be a complete ${messageType} that rewrites "${message}", NOT empty string "")
-- reason: Complete explanation of why this version improves on "${message}" (REQUIRED: must be a complete sentence explaining the improvement, NOT empty string "")
-- tags: Array with at least 1 tag (REQUIRED: minimum 1 item), each tag has:
-  - text: Tag label with clear axis definition (REQUIRED: must be non-empty string like "Polite (tone)", NOT "")
-  - isPositive: true or false (REQUIRED: boolean value)
+WHEN SOFTENING ISN'T NEEDED:
+- Simple requests with mild impatience are often FINE as-is
+- Over-softening can seem passive, insincere, or weak
+- "Can you finally send the document?" is acceptable in most professional contexts
+- Acknowledge when the original is reasonable: "The original is appropriate; here are variations for different contexts"
 
-EXAMPLE FOR A QUESTION LIKE "${message}":
-If the original is a question, your alternatives must also be questions. Here's a complete example:
+CALIBRATION:
+- "I'd really appreciate it if..." is softer but also less direct
+- "Could you please..." is polite but standard
+- "I need this today" is direct but not rude
+- Assess tradeoffs honestly in your reasons
 
-Original: "Can you send the document today?"
+RULES:
+1. Preserve speaker perspective (I stays I, you stays you)
+2. Preserve core intent
+3. Provide HONEST assessment of tradeoffs—softer isn't always better
+4. If original is reasonable, say so and frame alternatives as "options" not "improvements"
 
-Correct JSON response:
+Return EXACT JSON array with 3 items:
 [
   {
     "badge": "Option A",
-    "text": "Would it be possible to send the document today?",
-    "reason": "This version softens the request by using 'would it be possible' instead of 'can you', making it more polite and less demanding while preserving the same core request.",
-    "tags": [
-      { "text": "Polite (tone)", "isPositive": true },
-      { "text": "Less demanding (intensity)", "isPositive": true }
-    ]
+    "text": "Softer alternative",
+    "reason": "Explanation including any tradeoffs (e.g., 'softer but less urgent')",
+    "tags": [{"text": "diplomatic", "isPositive": true}]
   },
   {
     "badge": "Option B",
-    "text": "Could you please send the document today?",
-    "reason": "Adding 'please' increases politeness while maintaining directness. This version is more courteous than the original without losing clarity.",
-    "tags": [
-      { "text": "Courteous (tone)", "isPositive": true },
-      { "text": "Direct (approach)", "isPositive": true }
-    ]
+    "text": "Direct alternative",
+    "reason": "Explanation of why directness may be appropriate",
+    "tags": [{"text": "clear and direct", "isPositive": true}]
   },
   {
     "badge": "Option C",
-    "text": "I'd appreciate it if you could send the document today.",
-    "reason": "This version shifts from a question to a statement expressing appreciation, which can feel less demanding while still conveying the same urgency and request.",
-    "tags": [
-      { "text": "Appreciative (tone)", "isPositive": true },
-      { "text": "Less demanding (intensity)", "isPositive": true }
-    ]
+    "text": "Context-dependent alternative",
+    "reason": "When this version would be most appropriate",
+    "tags": [{"text": "situational", "isPositive": true}]
   }
-]
-
-Each alternative must be a complete, grammatically correct ${messageType} that preserves the core request from "${message}". DO NOT return empty strings for any field.
-
-TAG DEFINITIONS - CRITICAL:
-Tags must specify WHAT dimension they represent and FOR WHOM. Use clear axis definitions:
-
-✅ GOOD TAG EXAMPLES:
-- "Emotionally Safe (for recipient)" - clarifies it's about recipient's emotional safety
-- "Collaborative (approach)" - clarifies it's about the communication approach
-- "Direct (tone)" - clarifies it's about tone
-- "Empathetic (toward recipient)" - clarifies who the empathy is directed toward
-- "Softened (intensity)" - clarifies it's about emotional intensity reduction
-- "Vulnerable (speaker risk)" - clarifies it's about speaker taking emotional risk
-
-❌ BAD TAG EXAMPLES (too vague):
-- "Emotionally Safe" - safe for whom? in what context?
-- "Gentle" - gentle in what way? toward whom?
-- "Softened" - what was softened? how?
-
-Each tag must answer: What dimension? For whom? In what context?
-
-VALIDATION RULES:
-1. If any alternative fails validation (empty text, empty/incomplete reason, invalid tags), DO NOT include it in your response. Return fewer valid alternatives rather than broken ones. Fewer options > broken options.
-2. The reason field MUST be a complete explanation - DO NOT return incomplete sentences like "This version softens " or "This rephrasing strengthens" without completing the thought. Every reason must be a full, coherent explanation.
-3. If you cannot provide a complete reason for an alternative, do not include that alternative.
-
-CRITICAL RULES FOR EQUIVALENT REWRITES:
-Alternatives must be EQUIVALENT REWRITES that preserve the original message's core meaning, not interpretations or responses.
-
-1. PRESERVE SPEAKER PERSPECTIVE:
-   - If original uses "I", alternatives MUST use "I" (not "you" or "they")
-   - If original uses "you", alternatives MUST use "you" (not "I" or "they")
-   - DO NOT switch from first-person to second-person or vice versa
-   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" or "I felt a bit overlooked"
-   - ❌ WRONG: "I felt dismissed" → "I can see you felt overlooked" (switches to second-person)
-   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - only use if acknowledging increased risk
-
-2. PRESERVE EMOTIONAL OWNERSHIP:
-   - If speaker expresses their own feelings, alternatives MUST express the speaker's feelings
-   - DO NOT change from self-expression to observation or interpretation
-   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" (speaker still expressing their own feeling)
-   - ❌ WRONG: "I felt dismissed" → "It seems you felt dismissed" (changes to observation about others)
-   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - if used, reason must acknowledge increased risk
-
-3. PRESERVE COMMUNICATIVE INTENT:
-   - If original is a statement, alternatives MUST be statements (not questions or responses)
-   - If original is a question, alternatives MUST be questions
-   - DO NOT change from expressing to responding or interpreting
-   - Alternatives are REWRITES of the same message, not responses to it
-   - ✅ CORRECT: "I felt dismissed" → "I felt a bit overlooked" (still a statement expressing the same feeling)
-   - ❌ WRONG: "I felt dismissed" → "Did you feel dismissed?" (changes statement to question)
-   - ⚠️ NOTE: "I felt ignored" is STRONGER than "I felt dismissed" - if used, reason must acknowledge increased risk
-
-4. IMPROVE EMOTIONAL IMPACT:
-   - Reduce potential for negative emotional response
-   - Use softer language while maintaining the same meaning
-   - Vary in approach (e.g., one more direct, one more empathetic, one more collaborative)
-
-CRITICAL SEMANTIC UNDERSTANDING:
-When choosing alternative words, understand their relative strength AND meaning shifts:
-- "dismissed" is MODERATE - suggests being overlooked or not taken seriously (focus: attention/acknowledgment)
-- "ignored" is STRONGER than "dismissed" - suggests being completely overlooked or intentionally disregarded
-- "overlooked" is SOFTER than "dismissed" - more neutral, less judgmental (similar meaning frame)
-- "taken for granted" is STRONGER and DIFFERENT - implies longer-term pattern, shifts from attention → value/worth
-- "undervalued" is DIFFERENT - shifts from attention/acknowledgment → worth/value assessment
-- "slightly overlooked" or "a bit overlooked" is SOFTER than "overlooked"
-
-SEMANTIC SHIFT REQUIREMENTS:
-If you use a word that changes the meaning frame (e.g., "taken for granted" or "undervalued" instead of "dismissed"), you MUST explicitly acknowledge the shift in your reason:
-- ✅ CORRECT: "This shifts the emotional frame from attention to value, which may feel more personal but also more specific."
-- ✅ CORRECT: "This version uses 'taken for granted' which implies a longer-term pattern rather than a single incident, shifting from momentary attention to ongoing value assessment."
-- ❌ WRONG: "This version is softer" (when it actually shifts meaning)
-- ❌ WRONG: "This improves clarity" (without acknowledging the semantic shift)
-
-If you use a STRONGER word (like "ignored" instead of "dismissed"), you MUST acknowledge this in your reason:
-- ✅ CORRECT: "This version increases emotional clarity but slightly raises the risk of defensiveness."
-- ❌ WRONG: "This version is softer" (when it's actually stronger)
-
-TRANSPARENCY REQUIREMENT:
-Be explicit about semantic shifts. If word substitutions change meaning (attention → value, single incident → pattern, etc.), state it clearly. This transparency builds user trust.
-
-Create 3 alternatives that:
-1. Preserve the original intent of the message above
-2. Preserve speaker perspective (I stays I, you stays you)
-3. Preserve emotional ownership (speaker's feelings stay speaker's feelings)
-4. Preserve communicative intent (statement stays statement, question stays question)
-5. Reduce potential for negative emotional response
-6. Vary in approach (e.g., one more direct, one more empathetic, one more collaborative)
-
-Respond with this exact JSON array format (MUST have exactly 3 items, NOT empty):
-[
-  {
-    "badge": "Option A",
-    "text": "[Your rewritten version of the original message]",
-    "reason": "[Explanation of why this improves on the original]",
-    "tags": [
-      { "text": "[Tag name]", "isPositive": true },
-      { "text": "[Tag name]", "isPositive": false }
-    ]
-  },
-  {
-    "badge": "Option B",
-    "text": "[Your rewritten version of the original message]",
-    "reason": "[Explanation of why this improves on the original]",
-    "tags": [
-      { "text": "[Tag name]", "isPositive": true }
-    ]
-  },
-  {
-    "badge": "Option C",
-    "text": "[Your rewritten version of the original message]",
-    "reason": "[Explanation of why this improves on the original]",
-    "tags": [
-      { "text": "[Tag name]", "isPositive": true },
-      { "text": "[Tag name]", "isPositive": false }
-    ]
-  }
-]
-
-FINAL REMINDER:
-- Analyze the ACTUAL message: "${message}"
-- Generate 3 alternatives for THAT specific message
-- DO NOT copy examples - create new alternatives based on the message above
-- You MUST return an array with exactly 3 alternatives
-- DO NOT return an empty array []
-- ALL fields (badge, text, reason, tags) MUST be filled with actual content - NO EMPTY STRINGS ""
-- The "text" field must be a complete rewrite of "${message}" as a ${messageType}
-- The "reason" field must explain why each alternative improves on "${message}"`;
+]`;
 }
 
 // -----------------------------------------------------------------------------
