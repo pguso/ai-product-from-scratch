@@ -1,60 +1,48 @@
-import express from 'express';
-import type { AnalyzeRequest, AnalyzeResponse, ApiError } from '@communication-mirror/shared';
+import 'dotenv/config';
+import { config } from './config.js';
+import { createApp } from './app.js';
+import { getLLMService, getSessionManager } from '../lib/index.js';
+import { startModelLoading } from './model-loader.js';
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+/**
+ * Server Entry Point
+ * 
+ * Initializes services and starts the Express server.
+ * Model loads asynchronously in the background.
+ */
 
-app.use(express.json());
+// Initialize services
+const llmService = getLLMService({ modelPath: config.modelPath });
+const sessionManager = getSessionManager();
 
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Model loading state
+const modelState = {
+  loading: false,
+  error: null as Error | null,
+};
+
+// Start loading model in background (non-blocking)
+startModelLoading(llmService, config.modelPath, modelState);
+
+// Create Express app
+const app = createApp(llmService, modelState.loading, modelState.error, sessionManager);
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Analyze endpoint (placeholder - will be implemented with LLM)
-app.post('/api/analyze', (req, res) => {
-  const { message } = req.body as AnalyzeRequest;
-
-  if (!message || typeof message !== 'string') {
-    const error: ApiError = { error: 'Message is required' };
-    res.status(400).json(error);
-    return;
-  }
-
-  // Placeholder response - will be replaced with actual LLM analysis
-  const response: AnalyzeResponse = {
-    intent: {
-      primary: 'Placeholder intent',
-      secondary: 'Placeholder secondary',
-      implicit: 'Placeholder implicit',
-    },
-    tone: {
-      summary: 'Analysis pending LLM integration',
-      emotions: [{ label: 'Neutral', category: 'neutral' }],
-      details: 'This is a placeholder response.',
-    },
-    impact: {
-      metrics: [
-        { name: 'Emotional Friction', value: 50, level: 'medium' },
-        { name: 'Defensive Response Likelihood', value: 50, level: 'medium' },
-        { name: 'Relationship Strain', value: 50, level: 'medium' },
-        { name: 'Cooperation Likelihood', value: 50, level: 'medium' },
-      ],
-      recipientResponse: 'Placeholder recipient response prediction.',
-    },
-    alternatives: [
-      {
-        label: 'Option A',
-        text: 'Alternative phrasing will appear here.',
-        impact: 'Impact description will appear here.',
-        tags: [{ label: 'Placeholder', isPositive: true }],
-      },
-    ],
-  };
-
-  res.json(response);
+// Handle uncaught exceptions
+process.on('uncaughtException', (error: Error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+// Start server
+app.listen(config.port, () => {
+  console.log(`Backend server running on http://localhost:${config.port}`);
+  console.log(`Model path: ${config.modelPath}`);
+  console.log(`Model loading in background...`);
+  console.log(`Check /api/status for model loading progress`);
+  console.log(`OpenAPI documentation available at http://localhost:${config.port}/api-docs`);
 });

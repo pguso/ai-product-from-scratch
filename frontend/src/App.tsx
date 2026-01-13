@@ -1,4 +1,4 @@
-import type { AnalyzeResponse } from '@communication-mirror/shared';
+import type { AnalysisResult } from '@communication-mirror/shared';
 
 function App() {
   // Placeholder - UI will be built from mockup
