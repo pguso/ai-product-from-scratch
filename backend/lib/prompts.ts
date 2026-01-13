@@ -66,15 +66,24 @@ MESSAGE TO ANALYZE:
 Provide:
 - summary: A one-sentence overview of the overall tone (required, non-empty)
 - emotions: Array of detected emotional signals (REQUIRED: must have at least 1 item, NEVER empty), each with:
-  - text: The emotion label (e.g., "Frustrated", "Appreciative", "Anxious", "Neutral") - must be non-empty
+  - text: The emotion label (e.g., "Frustrated", "Appreciative", "Anxious", "Hurt (mild)", "Disappointment (low intensity)", "Emotional discomfort", "Neutral") - must be non-empty
   - sentiment: One of "positive", "neutral", or "negative" (required)
 - details: Specific observations about word choice, phrasing, or patterns that reveal tone. Reference specific words or phrases from the message (required, non-empty)
 
 CRITICAL RULES FOR EMOTIONS ARRAY:
 1. The emotions array MUST contain at least 1 emotion object - NEVER return an empty array []
-2. If you detect clear emotions, list them (e.g., "Frustrated", "Annoyed", "Impatient")
-3. If you cannot detect clear emotions, you MUST still return at least one emotion: {"text": "Neutral", "sentiment": "neutral"}
-4. The emotions array is NEVER allowed to be empty - always include at least one emotion
+2. ANALYZE THE ACTUAL WORDS IN THE MESSAGE for emotional content:
+   - Words like "felt dismissed", "frustrated", "hurt", "disappointed", "overlooked", "ignored" indicate NEGATIVE emotions
+   - Words like "happy", "grateful", "excited", "appreciative" indicate POSITIVE emotions
+   - If the message expresses negative experiences or feelings, you MUST include negative emotions, NOT "Neutral"
+3. IF YOU DETECT EMOTIONS (positive or negative), list them with appropriate labels:
+   - For mild negative emotions: "Hurt (mild)", "Disappointment (low intensity)", "Emotional discomfort", "Slight frustration"
+   - For stronger emotions: "Frustrated", "Annoyed", "Disappointed", "Hurt"
+   - For positive emotions: "Appreciative", "Grateful", "Happy", "Content"
+   - DO NOT include "Neutral" if you've detected any positive or negative emotions
+4. ONLY use "Neutral" if the message truly has NO emotional content (e.g., purely factual statements with no emotional words or expressions)
+5. CONSISTENCY CHECK: If your details mention "negative emotional experience", "frustration", "dismissed", etc., then your emotions array MUST include negative emotions, NOT "Neutral"
+6. The emotions array is NEVER allowed to be empty - always include at least one emotion
 
 Respond with this exact JSON structure:
 {
@@ -189,22 +198,28 @@ For each of the 3 alternatives, provide:
   - isPositive: true or false (required boolean)
 
 CRITICAL RULES FOR EQUIVALENT REWRITES:
+Alternatives must be EQUIVALENT REWRITES that preserve the original message's core meaning, not interpretations or responses.
+
 1. PRESERVE SPEAKER PERSPECTIVE: 
    - If original uses "I", alternatives MUST use "I" (not "you" or "they")
    - If original uses "you", alternatives MUST use "you" (not "I" or "they")
    - DO NOT switch from first-person to second-person or vice versa
-   - Example: "I felt dismissed" → "I felt overlooked" ✅ NOT "I can see you felt overlooked" ❌
+   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" or "I felt a bit ignored"
+   - ❌ WRONG: "I felt dismissed" → "I can see you felt overlooked" (switches to second-person)
 
 2. PRESERVE EMOTIONAL OWNERSHIP:
    - If speaker expresses their own feelings, alternatives MUST express the speaker's feelings
    - DO NOT change from self-expression to observation or interpretation
-   - Example: "I felt dismissed" → "I felt overlooked" ✅ NOT "It seems you felt dismissed" ❌
+   - ✅ CORRECT: "I felt dismissed" → "I felt overlooked" (speaker still expressing their own feeling)
+   - ❌ WRONG: "I felt dismissed" → "It seems you felt dismissed" (changes to observation about others)
 
 3. PRESERVE COMMUNICATIVE INTENT:
    - If original is a statement, alternatives MUST be statements (not questions or responses)
    - If original is a question, alternatives MUST be questions
    - DO NOT change from expressing to responding or interpreting
-   - Alternatives are REWRITES, not responses or interpretations
+   - Alternatives are REWRITES of the same message, not responses to it
+   - ✅ CORRECT: "I felt dismissed" → "I felt a bit overlooked" (still a statement expressing the same feeling)
+   - ❌ WRONG: "I felt dismissed" → "Did you feel dismissed?" (changes statement to question)
 
 4. IMPROVE EMOTIONAL IMPACT:
    - Reduce potential for negative emotional response
@@ -285,9 +300,21 @@ DO NOT return empty strings for any intent field. Analyze the message and provid
 4. "Cooperation Likelihood"
 Each metric must have: name (exact match), value (0-100), category (low/medium/high). DO NOT return an empty metrics array.\n`;
   } else if (isEmotionsError) {
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty emotions array []. This is NOT allowed. The emotions array MUST contain at least 1 emotion object. If you cannot detect clear emotions, you MUST still return at least one emotion, such as {"text": "Neutral", "sentiment": "neutral"}. DO NOT return an empty emotions array.\n`;
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty emotions array []. This is NOT allowed. The emotions array MUST contain at least 1 emotion object. 
+
+CRITICAL RULES FOR EMOTIONS:
+1. ANALYZE THE ACTUAL WORDS in the message for emotional content (e.g., "felt dismissed", "frustrated", "hurt" = negative emotions)
+2. If you detect negative emotions (like "dismissed", "frustration", "hurt"), you MUST include negative emotions like "Hurt (mild)", "Disappointment (low intensity)", or "Emotional discomfort" - NOT "Neutral"
+3. CONSISTENCY: If your details mention negative emotional experiences, your emotions array MUST include negative emotions, NOT "Neutral"
+4. ONLY use "Neutral" if the message truly has NO emotional content (purely factual statements)
+5. DO NOT return an empty emotions array.\n`;
   } else if (isAlternativesError) {
-    specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return []. Start generating the 3 alternatives now.\n`;
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return []. Start generating the 3 alternatives now.
+
+CRITICAL RULES FOR ALTERNATIVES (EQUIVALENT REWRITES):
+1. PRESERVE SPEAKER PERSPECTIVE: If original uses "I", alternatives MUST use "I" (not "you"). If original uses "you", alternatives MUST use "you" (not "I").
+2. PRESERVE EMOTIONAL OWNERSHIP: If speaker expresses their own feelings, alternatives MUST express the speaker's feelings (not observations about others).
+3. PRESERVE COMMUNICATIVE INTENT: If original is a statement, alternatives MUST be statements (not questions or responses). Alternatives are REWRITES, not responses or interpretations.\n`;
   } else if (isEmptyArrayError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. Arrays must have at least the minimum number of items specified. DO NOT return empty arrays.\n`;
   } else if (isEmptyStringError) {
@@ -302,8 +329,16 @@ ${specificWarning}
 REQUIREMENTS YOU MUST FOLLOW:
 - All required fields must be present and non-empty
 - Arrays must have at least the minimum number of items specified (DO NOT return empty arrays)
-- For alternatives: You MUST analyze the ACTUAL original message and generate alternatives for THAT specific message - DO NOT copy examples
-- For tone analysis: emotions array MUST have at least 1 item - if uncertain, use {"text": "Neutral", "sentiment": "neutral"}
+- For alternatives: 
+  * You MUST analyze the ACTUAL original message and generate alternatives for THAT specific message - DO NOT copy examples
+  * PRESERVE SPEAKER PERSPECTIVE: "I" stays "I", "you" stays "you" - DO NOT switch perspectives
+  * PRESERVE EMOTIONAL OWNERSHIP: Speaker's feelings stay speaker's feelings - DO NOT change to observations about others
+  * PRESERVE COMMUNICATIVE INTENT: Statements stay statements, questions stay questions - alternatives are REWRITES, not responses
+- For tone analysis: 
+  * emotions array MUST have at least 1 item
+  * ANALYZE ACTUAL WORDS in the message - if words like "felt dismissed", "frustrated", "hurt" appear, include negative emotions (e.g., "Hurt (mild)", "Disappointment (low intensity)"), NOT "Neutral"
+  * ONLY use "Neutral" if the message truly has NO emotional content
+  * Be consistent: if details mention negative emotions, emotions array must include negative emotions
 - For impact analysis: metrics array MUST have exactly 4 items - all 4 metrics must be provided
 - String fields cannot be empty (must have at least 1 character)
 - Numeric values must be within the specified ranges
