@@ -33,6 +33,12 @@ Identify three levels of intent:
 - secondary: The supporting goal or subtext (what else they're trying to achieve)
 - implicit: The unstated emotional or relational goal (what they may not realize they're conveying)
 
+CRITICAL RULES FOR INTENT FIELDS:
+1. ALL three fields (primary, secondary, implicit) MUST be non-empty strings with at least 1 character
+2. DO NOT return empty strings "" for any field
+3. If the message is simple, still provide meaningful descriptions for each level
+4. Each field must contain actual analysis, not placeholder text
+
 Respond with this exact JSON structure:
 {
   "primary": "description of primary intent",
@@ -218,9 +224,18 @@ export function buildRetryPrompt(originalPrompt: string, error: string): string 
   const isEmotionsError = error.includes('/emotions') && error.includes('must NOT have fewer than 1 items');
   const isMetricsError = error.includes('/metrics') && error.includes('must NOT have fewer than 1 items');
   const isAlternativesError = error.includes('root:') && error.includes('must NOT have fewer than 1 items');
+  const isEmptyStringError = error.includes('must NOT have fewer than 1 characters');
+  const isIntentError = (error.includes('/primary') || error.includes('/secondary') || error.includes('/implicit')) && isEmptyStringError;
   
   let specificWarning = '';
-  if (isMetricsError) {
+  if (isIntentError) {
+    const fieldName = error.includes('/primary') ? 'primary' : error.includes('/secondary') ? 'secondary' : 'implicit';
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty string for the "${fieldName}" field. This is NOT allowed. ALL intent fields (primary, secondary, implicit) MUST contain at least 1 character. You MUST provide a meaningful description for each intent level:
+- primary: The main stated purpose or request (what they explicitly want) - MUST be non-empty
+- secondary: The supporting goal or subtext (what else they're trying to achieve) - MUST be non-empty
+- implicit: The unstated emotional or relational goal (what they may not realize they're conveying) - MUST be non-empty
+DO NOT return empty strings for any intent field. Analyze the message and provide actual descriptions.\n`;
+  } else if (isMetricsError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty metrics array []. This is NOT allowed. The metrics array MUST contain exactly 4 metric objects. You MUST provide all 4 metrics:
 1. "Emotional Friction"
 2. "Defensive Response Likelihood"
@@ -233,6 +248,8 @@ Each metric must have: name (exact match), value (0-100), category (low/medium/h
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. You MUST generate exactly 3 alternatives based on the ACTUAL original message provided. DO NOT copy examples from the prompt - analyze the specific message and create alternatives for it. DO NOT return []. Start generating the 3 alternatives now.\n`;
   } else if (isEmptyArrayError) {
     specificWarning = `\n\nCRITICAL ERROR: You returned an empty array []. This is NOT allowed. Arrays must have at least the minimum number of items specified. DO NOT return empty arrays.\n`;
+  } else if (isEmptyStringError) {
+    specificWarning = `\n\nCRITICAL ERROR: You returned an empty string for a required field. This is NOT allowed. ALL string fields MUST contain at least 1 character. You MUST provide actual content, not empty strings. If you're uncertain, provide a reasonable description based on the message.\n`;
   }
 
   return `${originalPrompt}

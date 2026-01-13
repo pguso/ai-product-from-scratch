@@ -9,21 +9,21 @@
   --color-primary: #2563eb;
   --color-primary-light: #3b82f6;
   --color-primary-dark: #1e40af;
-
+  
   --color-success: #059669;
   --color-warning: #d97706;
   --color-danger: #dc2626;
-
+  
   /* Neutral backgrounds */
   --color-bg-base: #ffffff;
   --color-bg-secondary: #f8fafc;
   --color-bg-tertiary: #f1f5f9;
-
+  
   /* Text colors */
   --color-text-primary: #1e293b;
   --color-text-secondary: #475569;
   --color-text-tertiary: #64748b;
-
+  
   /* Borders */
   --color-border: #e2e8f0;
   --color-border-strong: #cbd5e1;

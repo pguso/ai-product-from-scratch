@@ -10,7 +10,7 @@ import { formatValidationErrors, parseJSON } from './validation.js';
 
 /**
  * LLM Generator
- * 
+ *
  * Core generation logic for creating LLM responses with:
  * - JSON schema grammar enforcement
  * - Response validation
@@ -91,7 +91,7 @@ export async function generateWithSchema<T>(
 
 /**
  * Generate with retry logic
- * 
+ *
  * Attempts generation up to maxAttempts times, providing error feedback
  * to the LLM on retry attempts.
  */

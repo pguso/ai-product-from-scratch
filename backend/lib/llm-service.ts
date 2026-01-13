@@ -218,6 +218,111 @@ export class LLMService {
     );
   }
 
+  /**
+   * Run all analyses in parallel using batching
+   * 
+   * Creates a temporary context with 4 sequences and processes all analyses
+   * simultaneously for improved performance.
+   */
+  async analyzeBatched(
+    message: string,
+    context?: string
+  ): Promise<{
+    intent: IntentAnalysis;
+    tone: ToneAnalysis;
+    impact: ImpactAnalysis;
+    alternatives: Alternative[];
+  }> {
+    this.ensureInitialized('intent');
+    this.ensureInitialized('tone');
+    this.ensureInitialized('impact');
+    this.ensureInitialized('alternatives');
+
+    if (!this.model) {
+      throw new Error('LLM service not initialized. Call initialize() first.');
+    }
+
+    // Create a temporary context with 4 sequences for batching
+    const batchedContext = await this.model.createContext({
+      contextSize: this.config.contextSize,
+      sequences: 4,
+    });
+
+    try {
+      // Get 4 separate sequences
+      const sequence1 = batchedContext.getSequence();
+      const sequence2 = batchedContext.getSequence();
+      const sequence3 = batchedContext.getSequence();
+      const sequence4 = batchedContext.getSequence();
+
+      // Run all analyses in parallel using batching
+      const [intent, tone, impact, alternatives] = await Promise.all([
+        generateWithRetry(
+          buildIntentPrompt,
+          this.grammars.intent!,
+          this.validators.intent,
+          message,
+          {
+            contextSequence: sequence1,
+            contextSize: batchedContext.contextSize,
+          },
+          context,
+          { temperature: 0.5 },
+          buildRetryPrompt
+        ),
+        generateWithRetry(
+          buildTonePrompt,
+          this.grammars.tone!,
+          this.validators.tone,
+          message,
+          {
+            contextSequence: sequence2,
+            contextSize: batchedContext.contextSize,
+          },
+          context,
+          { temperature: 0.6 },
+          buildRetryPrompt
+        ),
+        generateWithRetry(
+          buildImpactPrompt,
+          this.grammars.impact!,
+          this.validators.impact,
+          message,
+          {
+            contextSequence: sequence3,
+            contextSize: batchedContext.contextSize,
+          },
+          context,
+          { temperature: 0.5 },
+          buildRetryPrompt
+        ),
+        generateWithRetry(
+          buildAlternativesPrompt,
+          this.grammars.alternatives!,
+          this.validators.alternatives,
+          message,
+          {
+            contextSequence: sequence4,
+            contextSize: batchedContext.contextSize,
+          },
+          context,
+          { temperature: 0.6, maxTokens: 6000 },
+          buildRetryPrompt
+        ),
+      ]);
+
+      return {
+        intent,
+        tone,
+        impact,
+        alternatives,
+      };
+    } finally {
+      // Clean up the temporary context
+      await batchedContext.dispose();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Private Helpers
   // ---------------------------------------------------------------------------

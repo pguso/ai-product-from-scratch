@@ -93,22 +93,10 @@ export function createAnalyzeHandler(
           );
         }
 
-        // Run all analyses in parallel with context
-        console.log('[Analyze] Starting LLM analysis...');
-        const [intent, tone, impact, alternatives] = await Promise.all([
-          llmService.analyzeIntent(message, context || undefined),
-          llmService.analyzeTone(message, context || undefined),
-          llmService.predictImpact(message, context || undefined),
-          llmService.generateAlternatives(message, context || undefined),
-        ]);
-        console.log('[Analyze] LLM analysis completed');
-
-        const data: AnalysisResult = {
-          intent,
-          tone,
-          impact,
-          alternatives,
-        };
+        // Run all analyses in parallel using batching
+        console.log('[Analyze] Starting batched LLM analysis...');
+        const data = await llmService.analyzeBatched(message, context || undefined);
+        console.log('[Analyze] Batched LLM analysis completed');
 
         // Store interaction in session
         sessionManager.addInteraction(sessionId, message, data);
