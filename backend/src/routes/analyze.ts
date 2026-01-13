@@ -69,20 +69,15 @@ export function createAnalyzeHandler(
           sessionId = session.id;
           console.log(`[Analyze] Created new session: ${sessionId}`);
         } else {
-          // Validate session exists
+          // Validate session exists, create new one if not found
           const session = sessionManager.getSession(sessionId);
           if (!session) {
-            const error: ErrorResponse = {
-              success: false,
-              error: {
-                code: 'INVALID_SESSION',
-                message: 'Session not found. Create a new session by omitting sessionId.',
-              },
-            };
-            res.status(404).json(error);
-            return;
+            const newSession = sessionManager.createSession();
+            sessionId = newSession.id;
+            console.log(`[Analyze] Session not found, created new session: ${sessionId}`);
+          } else {
+            console.log(`[Analyze] Using existing session: ${sessionId}`);
           }
-          console.log(`[Analyze] Using existing session: ${sessionId}`);
         }
 
         // Get conversation context if available

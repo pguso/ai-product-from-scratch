@@ -50,9 +50,9 @@ export async function generateWithSchema<T>(
     contextSequence,
     systemPrompt:
       'You are a communication analysis expert. Always respond with valid, complete JSON only. Generate all required items - do not return empty arrays or incomplete responses.',
-    chatWrapper: new QwenChatWrapper({
+    /*chatWrapper: new QwenChatWrapper({
       thoughts: 'discourage',
-    }),
+    }),*/
   });
 
   let response: string | undefined;
@@ -77,12 +77,12 @@ export async function generateWithSchema<T>(
       const errors = formatValidationErrors(validator.errors);
       console.warn('[LLM] Validation failed. Response:', JSON.stringify(parsed, null, 2));
       console.warn('[LLM] Validation errors:', errors);
-      
+
       // Log validation error
       if (logger && sessionId && analysisType) {
         await logger.logError(sessionId, analysisType, `Validation failed: ${errors}`);
       }
-      
+
       throw new Error(`Validation failed: ${errors}`);
     }
 

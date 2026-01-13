@@ -22,7 +22,7 @@ import type { LLMService } from '../../lib/llm-service.js';
 type SessionManager = ReturnType<typeof import('../../lib/session-manager.js').getSessionManager>;
 
 /**
- * Helper to get or validate session
+ * Helper to get or create session
  */
 function getOrCreateSession(
   sessionManager: SessionManager,
@@ -36,9 +36,13 @@ function getOrCreateSession(
   } else {
     const session = sessionManager.getSession(sessionId);
     if (!session) {
-      throw new Error('INVALID_SESSION');
+      // Session not found, create a new one automatically
+      const newSession = sessionManager.createSession();
+      sessionId = newSession.id;
+      console.log(`[Analysis] Session not found, created new session: ${sessionId}`);
+    } else {
+      console.log(`[Analysis] Using existing session: ${sessionId}`);
     }
-    console.log(`[Analysis] Using existing session: ${sessionId}`);
   }
 
   const context = sessionManager.formatContext(sessionId);
@@ -106,17 +110,6 @@ export function createIntentHandler(
         sessionId,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'INVALID_SESSION') {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          error: {
-            code: 'INVALID_SESSION',
-            message: 'Session not found. Create a new session by omitting sessionId.',
-          },
-        };
-        res.status(404).json(errorResponse);
-        return;
-      }
       console.error('[Intent] Error:', error);
       next(error);
     }
@@ -184,17 +177,6 @@ export function createToneHandler(
         sessionId,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'INVALID_SESSION') {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          error: {
-            code: 'INVALID_SESSION',
-            message: 'Session not found. Create a new session by omitting sessionId.',
-          },
-        };
-        res.status(404).json(errorResponse);
-        return;
-      }
       console.error('[Tone] Error:', error);
       next(error);
     }
@@ -262,17 +244,6 @@ export function createImpactHandler(
         sessionId,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'INVALID_SESSION') {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          error: {
-            code: 'INVALID_SESSION',
-            message: 'Session not found. Create a new session by omitting sessionId.',
-          },
-        };
-        res.status(404).json(errorResponse);
-        return;
-      }
       console.error('[Impact] Error:', error);
       next(error);
     }
@@ -342,17 +313,6 @@ export function createAlternativesHandler(
         sessionId,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'INVALID_SESSION') {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          error: {
-            code: 'INVALID_SESSION',
-            message: 'Session not found. Create a new session by omitting sessionId.',
-          },
-        };
-        res.status(404).json(errorResponse);
-        return;
-      }
       console.error('[Alternatives] Error:', error);
       next(error);
     }
