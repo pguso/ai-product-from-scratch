@@ -46,6 +46,8 @@ This repository includes 10 comprehensive lessons that guide you through buildin
 
 **Start with [Lesson 01](lessons/01-introduction.md) to begin your learning journey.**
 
+![System Architecture](images/system-architecture.png)
+
 ## Prerequisites
 
 Before getting started, ensure you have:
