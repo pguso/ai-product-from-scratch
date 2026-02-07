@@ -135,15 +135,15 @@ Quantization reduces model size and RAM usage by using fewer bits per weight. He
 **Option 1: Hugging Face (Recommended)**
 1. Go to [Hugging Face Models](https://huggingface.co/models?search=qwen3+gguf)
 2. Search for "Qwen3" and filter by "GGUF"
-3. Look for models from **TheBloke** (most reliable quantizations)
-4. Download the `.gguf` file (not the entire repository)
+3. Look for models from **unsloth** (most reliable quantizations)
+4. Download the `.gguf` file, Q6_K or Q8_0 quantization (not the entire repository)
 
-**Option 2: TheBloke's Models (Easiest)**
-1. Go to [TheBloke's Qwen3 Models](https://huggingface.co/TheBloke)
+**Option 2: Unsloth AI's Models (Easiest)**
+1. Go to [UnSloth's Qwen3 Models](http://huggingface.co/unsloth)
 2. Search for "Qwen3"
 3. Click on a model (e.g., "Qwen3-1.7B-Instruct-GGUF")
 4. Download the `.gguf` file from "Files and versions" tab
-5. Choose quantization level (Q8_0, Q6_K, Q4_K_M, etc.)
+5. Choose quantization level (Q8_0, Q6_K, etc.)
 
 **Direct Download Links:**
 - [Qwen3 1.7B (small model)](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf)
@@ -164,11 +164,11 @@ mkdir -p backend/models
 
 # Download Qwen3-1.7B Q6_K (recommended)
 cd backend/models
-wget https://huggingface.co/TheBloke/Qwen3-1.7B-Instruct-GGUF/resolve/main/qwen3-1.7b-instruct.Q6_K.gguf
+wget https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q6_K.gguf
 
 # Or using curl
 curl -L -o qwen3-1.7b-instruct.Q6_K.gguf \
-  https://huggingface.co/TheBloke/Qwen3-1.7B-Instruct-GGUF/resolve/main/qwen3-1.7b-instruct.Q6_K.gguf
+  https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q6_K.gguf
 ```
 
 **Verify Download:**
@@ -227,10 +227,10 @@ npm run dev
 
 | Your RAM | Recommended Model | Download Link |
 |----------|-------------------|---------------|
-| 4-6GB | Qwen3-1.7B Q4_K_M | [Download Q4_K_M](https://huggingface.co/TheBloke/Qwen3-1.7B-Instruct-GGUF) |
-| 6-8GB | Qwen3-1.7B Q6_K | [Download Q6_K](https://huggingface.co/TheBloke/Qwen3-1.7B-Instruct-GGUF) |
-| 8GB+ | Qwen3-4B Q6_K | [Download 4B Q6_K](https://huggingface.co/TheBloke/Qwen3-4B-Instruct-GGUF) |
-| 12GB+ | Qwen3-8B Q6_K | [Download 8B Q6_K](https://huggingface.co/TheBloke/Qwen3-8B-Instruct-GGUF) |
+| 4-6GB | Qwen3-1.7B Q4_K_M | [Download Q4_K_M](https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf) |
+| 6-8GB | Qwen3-1.7B Q6_K | [Download Q6_K](https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q6_K.gguf) |
+| 8GB+ | Qwen3-4B Q6_K | [Download 4B Q6_K](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q6_K.gguf) |
+| 12GB+ | Qwen3-8B Q6_K | [Download 8B Q6_K](https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q6_K.gguf) |
 
 **First time?** Start with **Qwen3-1.7B Q6_K** - it's a good balance of quality and resource usage.
 
