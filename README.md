@@ -66,6 +66,25 @@ Before getting started, ensure you have:
   - **OS**: macOS, Linux, or Windows (WSL recommended for Windows)
   - **GPU**: Optional (CPU-only works fine, GPU can speed up inference)
 
+> **Important: RAM ≠ VRAM**
+>
+> The numbers above assume **CPU-only inference**.
+>
+> If your system has **no dedicated GPU** (e.g. Intel integrated graphics),
+> your available **VRAM is usually very limited (often ~1–2 GB)**, even if you
+> have plenty of system RAM.
+>
+> In that case, larger models or large context sizes (e.g. 4096 tokens) can fail
+> with errors like:
+>
+> `InsufficientMemoryError: context size too large for available VRAM`
+>
+> If this happens, use:
+> - smaller models (1.7B)
+> - lower quantization (Q4 / Q5)
+> - smaller context sizes (2048 or 1024)
+
+
 ## Getting Started
 
 ### 1. Install Dependencies
